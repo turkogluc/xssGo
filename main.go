@@ -16,14 +16,25 @@ import (
 type empty struct{}
 
 var targetURLs map[string]empty
+var vulnerableURLs map[string]empty
 var urlSTR, host, loginURL string
 var urlParsed *url.URL
 var bow *browser.Browser
 var badUrls []string
 var jar *cookiejar.Jar
 var cookies []*http.Cookie
+var payloads []string
+
 
 func main() {
+
+	p1 := []string{"<script>alert('XSS');</script>","<BODY ONLOAD=alert('XSS')>"}
+	p2 := []string{"><script>alert(0)</script>", "\" onfocus=\"alert(1);", "javascript:alert(1)","\"><img src=\"x:x\" onerror=\"alert(0)\">"}
+
+	payloads = append(payloads, p1...)
+	payloads = append(payloads, p2...)
+
+
 	bow = surf.NewBrowser()
 
 	//bow.SetAttribute(browser.SendReferer, false)
@@ -38,13 +49,14 @@ func main() {
 	bow.SetCookieJar(jar)
 
 	targetURLs = map[string]empty{}
+	vulnerableURLs = map[string]empty{}
 	urlSTR = "http://localhost/dvwa/"
 	//urlSTR = "https://www.seslisozluk.net/"
 	//urlSTR = "https://xss-game.appspot.com"
 	urlParsed, _ = url.Parse(urlSTR)
 
 	host = urlParsed.Host
-	level := 2
+	level := 5
 
 	badUrls = append(badUrls, []string{"%C3%A7%C4%B1k%C4%B1%C5%9F", "logout", ".png", ".jpg", ".jpeg", ".mp3", ".mp4", ".avi", ".gif", ".svg"}...)
 
@@ -75,6 +87,74 @@ func main() {
 		i++
 	}
 
+	//for u := range targetURLs{
+	//	control(u)
+	//}
+
+	control("a")
+
+	res,_ := json.Marshal(vulnerableURLs)
+	fmt.Println("Vulnerable URLS:")
+	fmt.Println(string(res))
+
+}
+
+func control(u string){
+	u="http://www.insecurelabs.org/Search.aspx?query=cemal"
+	// convert string to url.URL
+	originalURL,_ := url.Parse(u)
+	modifiedURL := originalURL
+
+	// get query parameters and values as map[string][]string
+	q := originalURL.Query()
+
+	// checking query parameters Ex: username=xx&email=yy
+	// only one parameter is changed at once
+	if len(q)>0{
+		for parameter := range q{
+			for _,payload := range payloads{
+
+				modifiedURL = originalURL
+				q.Set(parameter,payload)
+				modifiedURL.RawQuery = q.Encode()
+				if valideResponse(modifiedURL,payload) == true {
+					break
+				}
+			}
+		}
+	}
+
+	err := bow.Open(u)
+	if err != nil{
+		fmt.Println(err)
+	}
+
+
+
+
+
+
+
+
+}
+
+func valideResponse(u *url.URL,payload string)(bool){
+	// TODO: to get rid of false positives, it is needed to use a real browser. ==>
+
+	fmt.Println("Testing :",u)
+	err := bow.Open(u.String())
+	if err != nil{
+		fmt.Println(err)
+	}
+
+	if strings.Contains(bow.Body(),payload){
+		if _,contains := vulnerableURLs[u.String()]; !contains{
+			vulnerableURLs[u.String()]=empty{}
+		}
+		// if one payload is executed successfully no need to try other payloads
+		return true
+	}
+	return false
 }
 
 func crawlURL(u string) {
