@@ -87,20 +87,20 @@ func main() {
 		i++
 	}
 
-	//for u := range targetURLs{
-	//	control(u)
-	//}
+	for u := range targetURLs{
+		control(u)
+	}
 
-	control("a")
-
-	res,_ := json.Marshal(vulnerableURLs)
-	fmt.Println("Vulnerable URLS:")
-	fmt.Println(string(res))
+	fmt.Println(" ")
+	fmt.Println("vulnerable urls:")
+	for i,a := range vulnerableURLs{
+		fmt.Println(i,"-",a)
+	}
 
 }
 
 func control(u string){
-	u="http://www.insecurelabs.org/Search.aspx?query=cemal"
+	//u="http://www.insecurelabs.org/Search.aspx?query=cemal"
 	// convert string to url.URL
 	originalURL,_ := url.Parse(u)
 	modifiedURL := originalURL
@@ -117,7 +117,8 @@ func control(u string){
 				modifiedURL = originalURL
 				q.Set(parameter,payload)
 				modifiedURL.RawQuery = q.Encode()
-				if valideResponse(modifiedURL,payload) == true {
+				bow.Open(modifiedURL.String())
+				if valideResponse(payload) == true {
 					break
 				}
 			}
@@ -129,8 +130,36 @@ func control(u string){
 		fmt.Println(err)
 	}
 
+	allForms := bow.Forms()
 
+	for _, fm := range allForms {
+		if fm != nil {
+			fmt.Println("Form found.. : ")
+			for _,payload := range payloads{
+				fm.Dom().Find("input").Each(func(i int, s *goquery.Selection) {
+					if inputName, ok := s.Attr("name"); ok {
+						if inputType, ok2 := s.Attr("type"); ok2 {
+							if inputType != "hidden" || inputType != "submit" {
+								fm.Input(inputName, payload)
+							}
+						}
+					}
 
+				})
+
+				fmt.Println(fm.GetFields())
+
+				err = fm.Submit()
+				if err != nil {
+					panic(err)
+				}
+
+				fmt.Println("Form sent..")
+				valideResponse(payload)
+			}
+
+		}
+	}
 
 
 
@@ -138,14 +167,12 @@ func control(u string){
 
 }
 
-func valideResponse(u *url.URL,payload string)(bool){
+func valideResponse(payload string)(bool){
 	// TODO: to get rid of false positives, it is needed to use a real browser. ==>
 
+	u := bow.Url()
 	fmt.Println("Testing :",u)
-	err := bow.Open(u.String())
-	if err != nil{
-		fmt.Println(err)
-	}
+
 
 	if strings.Contains(bow.Body(),payload){
 		if _,contains := vulnerableURLs[u.String()]; !contains{
