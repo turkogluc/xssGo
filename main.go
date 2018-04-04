@@ -11,6 +11,7 @@ import (
 	"net/http/cookiejar"
 	"net/url"
 	"strings"
+	//"github.com/tebeka/selenium"
 )
 
 type empty struct{}
@@ -50,13 +51,14 @@ func main() {
 
 	targetURLs = map[string]empty{}
 	vulnerableURLs = map[string]empty{}
+	//urlSTR = "http://192.168.56.101"
 	urlSTR = "http://localhost/dvwa/"
 	//urlSTR = "https://www.seslisozluk.net/"
 	//urlSTR = "https://xss-game.appspot.com"
 	urlParsed, _ = url.Parse(urlSTR)
 
 	host = urlParsed.Host
-	level := 5
+	level := 3
 
 	badUrls = append(badUrls, []string{"%C3%A7%C4%B1k%C4%B1%C5%9F", "logout", ".png", ".jpg", ".jpeg", ".mp3", ".mp4", ".avi", ".gif", ".svg"}...)
 
@@ -87,20 +89,25 @@ func main() {
 		i++
 	}
 
+	DriverInit()
+
 	for u := range targetURLs{
 		control(u)
 	}
 
 	fmt.Println(" ")
 	fmt.Println("vulnerable urls:")
-	for i,a := range vulnerableURLs{
-		fmt.Println(i,"-",a)
+	j:=1
+	for i,_ := range vulnerableURLs{
+		fmt.Println(j,":",i)
+		j++
 	}
 
+	DriverStop()
 }
 
 func control(u string){
-	//u="http://www.insecurelabs.org/Search.aspx?query=cemal"
+
 	// convert string to url.URL
 	originalURL,_ := url.Parse(u)
 	modifiedURL := originalURL
@@ -117,49 +124,54 @@ func control(u string){
 				modifiedURL = originalURL
 				q.Set(parameter,payload)
 				modifiedURL.RawQuery = q.Encode()
-				bow.Open(modifiedURL.String())
-				if valideResponse(payload) == true {
+
+				//bow.Open(modifiedURL.String())
+
+				if BrowserTest(modifiedURL.String(),payload){
+					if _,contains := vulnerableURLs[modifiedURL.String()]; !contains{
+						vulnerableURLs[modifiedURL.String()]=empty{}
+					}
 					break
 				}
 			}
 		}
 	}
 
-	err := bow.Open(u)
-	if err != nil{
-		fmt.Println(err)
-	}
-
-	allForms := bow.Forms()
-
-	for _, fm := range allForms {
-		if fm != nil {
-			fmt.Println("Form found.. : ")
-			for _,payload := range payloads{
-				fm.Dom().Find("input").Each(func(i int, s *goquery.Selection) {
-					if inputName, ok := s.Attr("name"); ok {
-						if inputType, ok2 := s.Attr("type"); ok2 {
-							if inputType != "hidden" || inputType != "submit" {
-								fm.Input(inputName, payload)
-							}
-						}
-					}
-
-				})
-
-				fmt.Println(fm.GetFields())
-
-				err = fm.Submit()
-				if err != nil {
-					panic(err)
-				}
-
-				fmt.Println("Form sent..")
-				valideResponse(payload)
-			}
-
-		}
-	}
+	//err := bow.Open(u)
+	//if err != nil{
+	//	fmt.Println(err)
+	//}
+	//
+	//allForms := bow.Forms()
+	//
+	//for _, fm := range allForms {
+	//	if fm != nil {
+	//		fmt.Println("Form found.. : ")
+	//		for _,payload := range payloads{
+	//			fm.Dom().Find("input").Each(func(i int, s *goquery.Selection) {
+	//				if inputName, ok := s.Attr("name"); ok {
+	//					if inputType, ok2 := s.Attr("type"); ok2 {
+	//						if inputType != "hidden" || inputType != "submit" {
+	//							fm.Input(inputName, payload)
+	//						}
+	//					}
+	//				}
+	//
+	//			})
+	//
+	//			fmt.Println(fm.GetFields())
+	//
+	//			err = fm.Submit()
+	//			if err != nil {
+	//				panic(err)
+	//			}
+	//
+	//			fmt.Println("Form sent..")
+	//			valideResponse(payload)
+	//		}
+	//
+	//	}
+	//}
 
 
 
