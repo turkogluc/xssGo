@@ -1,0 +1,52 @@
+{
+ "cookieManagerVersion": "1.4",
+ "userAgent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:58.0) Gecko/20100101 Firefox/58.0",
+ "cookies": [
+ {
+  "name": "security_level",
+  "value": "0",
+  "domain": "localhost",
+  "hostOnly": true,
+  "path": "/",
+  "secure": false,
+  "httpOnly": false,
+  "session": false,
+  "expirationDate": 1555250308,
+  "storeId": "firefox-default"
+ },
+ {
+  "name": "PHPSESSID",
+  "value": "1l2fb11illqvns8ucu0fku1684",
+  "domain": "localhost",
+  "hostOnly": true,
+  "path": "/",
+  "secure": false,
+  "httpOnly": false,
+  "session": true,
+  "storeId": "firefox-default"
+ },
+ {
+  "name": "{2d3a7c30-9670-412d-874d-70e093c43548}",
+  "value": "value",
+  "domain": "localhost",
+  "hostOnly": true,
+  "path": "/dvwa/",
+  "secure": false,
+  "httpOnly": false,
+  "session": false,
+  "expirationDate": 1523812463,
+  "storeId": "firefox-default"
+ },
+ {
+  "name": "security",
+  "value": "low",
+  "domain": "localhost",
+  "hostOnly": true,
+  "path": "/dvwa/",
+  "secure": false,
+  "httpOnly": false,
+  "session": true,
+  "storeId": "firefox-default"
+ }
+]
+}

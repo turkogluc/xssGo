@@ -9,6 +9,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"net/http"
+	"math"
 )
 
 type chromeDriver struct {
@@ -394,5 +396,35 @@ func (cd *chromeDriver) trySelection(url string) {
 	fmt.Println(c)
 
 	time.Sleep(5*time.Second)
+}
+
+func (cd *chromeDriver) setCookiesToChrome(goCookies []*http.Cookie){
+	// WARNING: First You need to open the page before setting cookies
+	cd.webDriver.DeleteAllCookies()
+
+	for _,goCookie := range goCookies{
+		c := selenium.Cookie{
+			Name:goCookie.Name,
+			Value:goCookie.Value,
+			Path:goCookie.Path,
+			Domain:goCookie.Domain,
+			Secure:goCookie.Secure,
+			Expiry:math.MaxUint32,
+			//Expiry:uint(time.Now().Add(24*time.Hour).Unix()),
+		}
+		e:=cd.webDriver.AddCookie(&c)
+		if e != nil {
+			log.Println(e)
+		}
+	}
+
+
+	c,e := cd.webDriver.GetCookies()
+	if e != nil {
+		log.Println(e)
+	}
+
+	log.Println(c)
+
 }
 

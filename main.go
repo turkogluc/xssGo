@@ -1,18 +1,14 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"github.com/PuerkitoBio/goquery"
 	"github.com/headzoo/surf"
 	"github.com/headzoo/surf/agent"
 	"github.com/headzoo/surf/browser"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
-	"strings"
 	//"github.com/tebeka/selenium"
-	"log"
 	"time"
 )
 
@@ -72,6 +68,8 @@ func init() {
 
 	badUrls = append(badUrls, []string{"%C3%A7%C4%B1k%C4%B1%C5%9F", "logout", ".png", ".jpg", ".jpeg", ".mp3", ".mp4", ".avi", ".gif", ".svg", "setup", "csrf"}...)
 	badUrls = append(badUrls, []string{"reset", "user_extra", "password_change"}...)
+
+	//fmt.Println(time.Now().Unix())
 }
 
 // TODO ## List ##
@@ -83,6 +81,7 @@ func init() {
 //		Welcome message
 //		Usage
 // 		Get Black-list (jpg,png,pdf..)
+//		Payloads from file
 
 // TODO Better Logging and stdout mechanizm (seperated)
 //
@@ -95,51 +94,89 @@ func init() {
 
 
 func main() {
+
 	defer finishTime()
-	err := bow.Open(urlSTR)
-	if err != nil {
-		log.Println("PANIC:", err)
-	}
-
-	// add the first target to list
-	targetURLs[urlSTR] = empty{}
-
-	//LoginByCredentials(urlSTR,"admin","password")
-	Login(urlSTR)
-
-	//crawling
-	crawlURL(urlSTR)
-
-	if level > 1 {
-		for i := 2; i <= level; i++ {
-			for tempURL, _ := range targetURLs {
-				crawlURL(tempURL)
-			}
-		}
-	}
+	//err := bow.Open(urlSTR)
+	//if err != nil {
+	//	log.Println("PANIC:", err)
+	//}
 	//
-	i := 1
-	for u, _ := range targetURLs {
-		fmt.Println(i, u)
-		i++
-	}
+	//cs,err := readCookiesFromFile("cookies.json")
+	//if err != nil{
+	//	panic("couldnt read cookies from file")
+	//}
+	//SetCookies(cs)
+	//
+	//x := bow.SiteCookies()
+	//log.Println(x)
+	//err = bow.Open(urlSTR)
+	//if err != nil {
+	//	log.Println("PANIC:", err)
+	//}
+	//
+	//s,_:= bow.Dom().Html()
+	//fmt.Println(s)
+	//
+	//// add the first target to list
+	//targetURLs[urlSTR] = empty{}
+	//
+	////LoginByCredentials(urlSTR,"admin","password")
+	//Login(urlSTR)
+	//
+	////crawling
+	//crawlURL(urlSTR)
+	//
+	//if level > 1 {
+	//	for i := 2; i <= level; i++ {
+	//		for tempURL, _ := range targetURLs {
+	//			crawlURL(tempURL)
+	//		}
+	//	}
+	//}
+	////
+	//i := 1
+	//for u, _ := range targetURLs {
+	//	fmt.Println(i, u)
+	//	i++
+	//}
 
-	cd.initDriver()
-	defer cd.stopDriver()
-	cd.loginAuto(urlSTR)		   // let the chrome-driver log in with credentials taken from user
 
 
-	targetURLs["http://localhost/dvwa/vulnerabilities/xss_d/?default=English"] = empty{}
 
-	log.Println("Query parameters are going to be tested")
-	for u := range targetURLs {
-		controlQueryParameters(u)
-	}
 
-	log.Println("Form inputs are going to be tested")
-	for u := range targetURLs {
-		controlFormInputs(u)
-	}
+	//cd.initDriver()
+	//defer cd.stopDriver()
+	////cd.loginAuto(urlSTR)		   // let the chrome-driver log in with credentials taken from user
+	//
+	//
+	//
+	//cd.webDriver.Get("http://localhost/dvwa/vulnerabilities/xss_d/?default=English")
+	//
+	//
+	//cs,err := readCookiesFromFile("cookies.json")
+	//if err != nil{
+	//	panic("couldnt read cookies from file")
+	//}
+	//
+	//goCookie := convertCookiesToGolang(cs)
+	//cd.setCookiesToChrome(goCookie)
+	//
+	//cd.webDriver.Get("http://localhost/dvwa/vulnerabilities/xss_d/?default=English")
+	//
+	//
+	//targetURLs["http://localhost/dvwa/vulnerabilities/xss_d/?default=English"] = empty{}
+	//
+	//log.Println("Query parameters are going to be tested")
+	//for u := range targetURLs {
+	//	controlQueryParameters(u)
+	//}
+	//
+	//log.Println("Form inputs are going to be tested")
+	//for u := range targetURLs {
+	//	controlFormInputs(u)
+	//}
+
+	// ###### tests ######
 
 	//controlFormInputs("http://localhost/dvwa/vulnerabilities/xss_d/")
 
@@ -187,190 +224,9 @@ func main() {
 	}
 }
 
-func controlFormInputs(u string) {
-	isVul, p := cd.formTest(u, payloads)
-	if isVul {
-		if _, contains := vulnerableURLs[u]; !contains {
-			vulnerableURLs[u] = empty{payload: p}
-		}
-	}
-}
-
-func controlQueryParameters(u string) {
-	// convert string to url.URL
-	originalURL, _ := url.Parse(u)
-	modifiedURL := originalURL
-
-	// testing for DOM XSS
-
-	// browser does not allow , encodes url
-	// TODO: find a way to bypass
-	// chrome-headless disable-xss-auditor ?
-
-	if modifiedURL.Fragment != "" {
-		for _, payload := range payloads {
-
-			modifiedURL.Fragment = payload
-
-			if cd.pageTest(modifiedURL.String()) {
-				if _, contains := vulnerableURLs[modifiedURL.String()]; !contains {
-					vulnerableURLs[modifiedURL.String()] = empty{}
-				}
-				break
-			}
-		}
-	}
-
-	// get query parameters and values as map[string][]string
-	q := originalURL.Query()
-
-	// checking query parameters Ex: username=xx&email=yy
-	// only one parameter is changed at once
-	if len(q) > 0 {
-		for parameter := range q {
-			for _, payload := range payloads {
-
-				modifiedURL = originalURL
-				q.Set(parameter, payload)
-				modifiedURL.RawQuery = q.Encode()
-
-				if cd.pageTest(modifiedURL.String()) {
-					if _, contains := vulnerableURLs[modifiedURL.String()]; !contains {
-						vulnerableURLs[modifiedURL.String()] = empty{}
-					}
-					break
-				}
-			}
-		}
-	}
-}
-
-func crawlURL(u string) {
-
-	// Crawler travers as BFS tree
-
-	err := bow.Open(u)
-	if err != nil {
-		panic(err)
-	}
-
-	// return all links in the current page
-	links := bow.Links()
 
 
-	//i:=0
-	for _, link := range links {
 
-		//fmt.Println(link)
-
-		_, ifContains := targetURLs[link.Url().String()]
-		whitelisted := true
-		for _, b := range badUrls {
-			if strings.Contains(link.Url().String(), b) {
-				whitelisted = false
-				break
-			}
-
-		}
-
-		// search for same domain
-		// do not allow unwanted urls like: png,jpg,pdf etc.
-		// add if the URL not already in slice
-		if strings.Compare(host, link.Url().Host) == 0 && !ifContains && whitelisted {
-
-			//fmt.Println(link)
-			targetURLs[link.Url().String()] = empty{}
-			//i++
-			//fmt.Println(i, link.Url())
-
-		}
-
-	}
-}
-
-func LoginByCredentials(loginURL string, user string, pass string) {
-
-	fm, _ := bow.Form("form")
-	fm.Input("username", "admin")
-	fm.Input("password", "password")
-	//fmt.Println(bow.Dom().Html())
-	fm.Submit()
-	//fmt.Println(bow.Dom().Html())
-
-}
-
-func Login(loginURL string) {
-
-	err := bow.Open(urlSTR)
-	if err != nil {
-		panic(err)
-	}
-
-	allForms := bow.Forms()
-	var text string
-
-	for _, fm := range allForms {
-		if fm != nil {
-			fmt.Println("Form found.. : ")
-			fm.Dom().Find("input").Each(func(i int, s *goquery.Selection) {
-				// For each item found, get the band and title
-				if inputName, ok := s.Attr("name"); ok {
-					if inputType, ok2 := s.Attr("type"); ok2 {
-						if inputType == "text" || inputType == "password" {
-							fmt.Print("Enter ", inputName, ":")
-							fmt.Scanln(&text)
-							fm.Input(inputName, text)
-							loginInformation[inputName] = text
-						}
-					}
-				}
-
-			})
-
-			fmt.Println(fm.GetFields())
-
-			err = fm.Submit()
-			if err != nil {
-				panic(err)
-			}
-
-			fmt.Println("Succesfully loged in..")
-			fmt.Println("Cookies are set as:")
-
-			for _, c := range bow.CookieJar().Cookies(urlParsed) {
-				res, _ := json.Marshal(c)
-				fmt.Println(string(res))
-			}
-		}
-	}
-}
-
-func SetCookie() {
-
-	cookie := &http.Cookie{
-		Domain: "localhost",
-		Name:   "PHPSESSID",
-		Value:  "j5mdm88v2ougl2kjrrinsfcsd1",
-	}
-	cookies = append(cookies, cookie)
-
-	cookie = &http.Cookie{
-		Domain: "localhost",
-		Name:   "security",
-		Value:  "impossible",
-	}
-	cookies = append(cookies, cookie)
-
-	jar.SetCookies(urlParsed, cookies)
-	bow.SetCookieJar(jar)
-
-	fmt.Println("afterr:")
-	for _, c := range bow.CookieJar().Cookies(urlParsed) {
-		res, _ := json.Marshal(c)
-		fmt.Println(string(res))
-	}
-
-}
 
 func finishTime() {
 	fmt.Println("Time Elapsed:", time.Since(startTime))
