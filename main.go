@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-type empty struct{
+type empty struct {
 	payload string
 }
 
@@ -34,14 +34,13 @@ var level int
 var cd *chromeDriver
 var startTime time.Time
 
-func init(){
+func init() {
 	startTime = time.Now()
-	p1 := []string{"<script>alert('XSS');</script>","<BODY ONLOAD=alert('XSS')>","\";alert(1);//","';alert(1);//"}
-	p2 := []string{"><script>alert(0)</script>", "\" onfocus=\"alert(1);", "javascript:alert(1)","\"><img src=\"x:x\" onerror=\"alert(0)\">"}
+	p1 := []string{"<script>alert('XSS');</script>", "<BODY ONLOAD=alert('XSS')>", "\";alert(1);//", "';alert(1);//"}
+	p2 := []string{"><script>alert(0)</script>", "\" onfocus=\"alert(1);", "javascript:alert(1)", "\"><img src=\"x:x\" onerror=\"alert(0)\">"}
 
 	payloads = append(payloads, p1...)
 	payloads = append(payloads, p2...)
-
 
 	bow = surf.NewBrowser()
 	cd = &chromeDriver{}
@@ -71,15 +70,35 @@ func init(){
 	host = urlParsed.Host
 	level = 3
 
-	badUrls = append(badUrls, []string{"%C3%A7%C4%B1k%C4%B1%C5%9F", "logout", ".png", ".jpg", ".jpeg", ".mp3", ".mp4", ".avi", ".gif", ".svg","setup","csrf"}...)
-	badUrls = append(badUrls,[]string{"reset","user_extra","password_change"}...)
+	badUrls = append(badUrls, []string{"%C3%A7%C4%B1k%C4%B1%C5%9F", "logout", ".png", ".jpg", ".jpeg", ".mp3", ".mp4", ".avi", ".gif", ".svg", "setup", "csrf"}...)
+	badUrls = append(badUrls, []string{"reset", "user_extra", "password_change"}...)
 }
+
+// TODO ## List ##
+
+// TODO Accept Cookies from JSON File
+// 		Inserting to both modules
+
+// TODO Command line arguments with flag
+//		Welcome message
+//		Usage
+// 		Get Black-list (jpg,png,pdf..)
+
+// TODO Better Logging and stdout mechanizm (seperated)
+//
+
+// TODO Implement Go routines and sync , maybe workers
+//		To increase the speed run on all cores of CPU
+
+
+
+
 
 func main() {
 	defer finishTime()
 	err := bow.Open(urlSTR)
 	if err != nil {
-		log.Println("PANIC:",err)
+		log.Println("PANIC:", err)
 	}
 
 	// add the first target to list
@@ -87,12 +106,6 @@ func main() {
 
 	//LoginByCredentials(urlSTR,"admin","password")
 	Login(urlSTR)
-	//cookies := bow.CookieJar().Cookies(urlParsed)
-	//cookies := bow.SiteCookies()
-
-
-	//c := bow.SiteCookies()  // get cookies
-	//SetCookie()
 
 	//crawling
 	crawlURL(urlSTR)
@@ -113,24 +126,27 @@ func main() {
 
 	cd.initDriver()
 	defer cd.stopDriver()
-	//cd.login(urlSTR)
-	//cd.loginW(urlSTR)
-	cd.loginAuto(urlSTR)
+	cd.loginAuto(urlSTR)		   // let the chrome-driver log in with credentials taken from user
+
+
+	targetURLs["http://localhost/dvwa/vulnerabilities/xss_d/?default=English"] = empty{}
 
 	log.Println("Query parameters are going to be tested")
-	for u := range targetURLs{
+	for u := range targetURLs {
 		controlQueryParameters(u)
 	}
 
 	log.Println("Form inputs are going to be tested")
-	for u := range targetURLs{
+	for u := range targetURLs {
 		controlFormInputs(u)
 	}
 
+	//controlFormInputs("http://localhost/dvwa/vulnerabilities/xss_d/")
+
+	//cd.trySelection("http://localhost/dvwa/security.php")
+
+	// test
 	//controlFormInputs("http://localhost/dvwa/vulnerabilities/xss_s/")
-
-
-
 	// controlFormInputs("http://localhost/dvwa/vulnerabilities/xss_s/")
 
 	//cd.formTest("http://192.168.56.101/xss/example8.php",payloads)
@@ -161,42 +177,35 @@ func main() {
 	////}
 	//
 
-
-
 	//Output
 	fmt.Println(" ")
 	fmt.Println("vulnerable urls:")
-	j:=1
-	for i,v := range vulnerableURLs{
-		fmt.Println(j,":",i," payload:",v.payload)
+	j := 1
+	for i, v := range vulnerableURLs {
+		fmt.Println(j, ":", i, " payload:", v.payload)
 		j++
 	}
-
-
 }
 
-func controlFormInputs(u string){
-
-	isVul,p := cd.formTest(u,payloads)
+func controlFormInputs(u string) {
+	isVul, p := cd.formTest(u, payloads)
 	if isVul {
-		if _,contains := vulnerableURLs[u]; !contains{
-			vulnerableURLs[u]=empty{payload:p}
+		if _, contains := vulnerableURLs[u]; !contains {
+			vulnerableURLs[u] = empty{payload: p}
 		}
 	}
-
 }
 
-func controlQueryParameters(u string){
-
+func controlQueryParameters(u string) {
 	// convert string to url.URL
-	originalURL,_ := url.Parse(u)
+	originalURL, _ := url.Parse(u)
 	modifiedURL := originalURL
-
 
 	// testing for DOM XSS
 
 	// browser does not allow , encodes url
 	// TODO: find a way to bypass
+	// chrome-headless disable-xss-auditor ?
 
 	if modifiedURL.Fragment != "" {
 		for _, payload := range payloads {
@@ -209,50 +218,32 @@ func controlQueryParameters(u string){
 				}
 				break
 			}
-
 		}
-
 	}
-
 
 	// get query parameters and values as map[string][]string
 	q := originalURL.Query()
 
 	// checking query parameters Ex: username=xx&email=yy
 	// only one parameter is changed at once
-	if len(q)>0{
-		for parameter := range q{
-			for _,payload := range payloads{
+	if len(q) > 0 {
+		for parameter := range q {
+			for _, payload := range payloads {
 
 				modifiedURL = originalURL
-				q.Set(parameter,payload)
+				q.Set(parameter, payload)
 				modifiedURL.RawQuery = q.Encode()
 
-
-
-				if cd.pageTest(modifiedURL.String()){
-					if _,contains := vulnerableURLs[modifiedURL.String()]; !contains{
-								vulnerableURLs[modifiedURL.String()]=empty{}
+				if cd.pageTest(modifiedURL.String()) {
+					if _, contains := vulnerableURLs[modifiedURL.String()]; !contains {
+						vulnerableURLs[modifiedURL.String()] = empty{}
 					}
 					break
 				}
-
-
-
-				//bow.Open(modifiedURL.String())
-
-				//if BrowserQueryTest(modifiedURL.String(),payload){
-				//	if _,contains := vulnerableURLs[modifiedURL.String()]; !contains{
-				//		vulnerableURLs[modifiedURL.String()]=empty{}
-				//	}
-				//	break
-				//}
 			}
 		}
 	}
-
 }
-
 
 func crawlURL(u string) {
 
@@ -266,7 +257,7 @@ func crawlURL(u string) {
 	// return all links in the current page
 	links := bow.Links()
 
-	// TODO: dont get non-html files (jpg,png,pdf..)
+
 	//i:=0
 	for _, link := range links {
 
@@ -305,7 +296,6 @@ func LoginByCredentials(loginURL string, user string, pass string) {
 	//fmt.Println(bow.Dom().Html())
 	fm.Submit()
 	//fmt.Println(bow.Dom().Html())
-
 
 }
 
@@ -382,6 +372,6 @@ func SetCookie() {
 
 }
 
-func finishTime(){
-	fmt.Println("Time Elapsed:",time.Since(startTime))
+func finishTime() {
+	fmt.Println("Time Elapsed:", time.Since(startTime))
 }

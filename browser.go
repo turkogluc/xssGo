@@ -8,18 +8,18 @@ import (
 	"fmt"
 	"net/http"
 	//"time"
-	"time"
 	"net/url"
+	"time"
 )
+
 type browserDriver struct {
 	driver *agouti.WebDriver
-	page *agouti.Page
-	mutex *sync.Mutex
+	page   *agouti.Page
+	mutex  *sync.Mutex
 	cookie []*http.Cookie
 }
 
-
-func (bd *browserDriver) DriverInit(url string)(err error){
+func (bd *browserDriver) DriverInit(url string) (err error) {
 	bd.driver = agouti.ChromeDriver(agouti.ChromeOptions("args", []string{"--disable-xss-auditor"}))
 
 	// "--headless", "--disable-gpu", "--no-sandbox",
@@ -29,7 +29,6 @@ func (bd *browserDriver) DriverInit(url string)(err error){
 
 	//driver := agouti.GeckoDriver()
 
-
 	bd.mutex = &sync.Mutex{}
 
 	err = nil
@@ -37,11 +36,10 @@ func (bd *browserDriver) DriverInit(url string)(err error){
 		log.Fatal("Failed to start driver:", err)
 	}
 
-
 	bd.page, err = bd.driver.NewPage(agouti.Browser("chrome"))
 	if err != nil {
 		log.Fatal("Failed to open page:", err)
-	}else{
+	} else {
 		bd.page.SetPageLoad(3)
 	}
 
@@ -49,27 +47,21 @@ func (bd *browserDriver) DriverInit(url string)(err error){
 		log.Fatal("Failed to navigate:", err)
 	}
 
-
 	return err
 }
 
-func (bd *browserDriver) DriverSetCookies(jar http.CookieJar,url *url.URL){
-
-
+func (bd *browserDriver) DriverSetCookies(jar http.CookieJar, url *url.URL) {
 
 }
 
-func (bd *browserDriver) BrowserQueryTest(url string,payload string)(bool) {
-
+func (bd *browserDriver) BrowserQueryTest(url string, payload string) bool {
 
 	bd.mutex.Lock()
 	//time.Sleep(time.Millisecond)
 
-
 	if err := bd.page.Navigate(url); err != nil {
 		log.Fatal("Failed to navigate:", err)
 	}
-
 
 	time.Sleep(100 * time.Millisecond)
 
@@ -78,26 +70,24 @@ func (bd *browserDriver) BrowserQueryTest(url string,payload string)(bool) {
 		fmt.Println(err)
 	}
 	u := ""
-	u,err = bd.page.URL()
+	u, err = bd.page.URL()
 	if err != nil {
-			fmt.Println(err)
+		fmt.Println(err)
 	}
 
-
-
-	fmt.Println("title:", sectionTitle, " url:",u)
+	fmt.Println("title:", sectionTitle, " url:", u)
 	//
 	////log.Println(page.Find("#alert").Text())
 	//
 	//u,_ := page.URL()
 	//log.Print("url",u)
-	time.Sleep(100*time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 	state := false
-	popup,err := bd.page.PopupText()
+	popup, err := bd.page.PopupText()
 	if err != nil {
 		log.Print("No pop up:", err)
 		state = false
-	}else{
+	} else {
 		bd.page.ConfirmPopup()
 		log.Println("yes ", popup)
 		state = true
@@ -106,14 +96,13 @@ func (bd *browserDriver) BrowserQueryTest(url string,payload string)(bool) {
 	return state
 }
 
-func (bd *browserDriver) DriverStop(){
+func (bd *browserDriver) DriverStop() {
 	if err := bd.driver.Stop(); err != nil {
 		log.Fatal("Failed to close pages and stop WebDriver:", err)
 	}
 }
 
-
-func (bd *browserDriver)login(){
+func (bd *browserDriver) login() {
 	url := "http://localhost/dvwa/login.php"
 	if err := bd.page.Navigate(url); err != nil {
 		log.Fatal("Failed to navigate:", err)
@@ -126,14 +115,13 @@ func (bd *browserDriver)login(){
 
 	var err error
 
-
-	if err = bd.page.FindByLabel("Username").Fill("admin"); err != nil{
+	if err = bd.page.FindByLabel("Username").Fill("admin"); err != nil {
 		log.Fatal("Something is wrong:", err)
 	}
-	if err = bd.page.FindByLabel("password").Fill("password"); err != nil{
+	if err = bd.page.FindByLabel("password").Fill("password"); err != nil {
 		log.Fatal("Something is wrong:", err)
 	}
-	if err = bd.page.FindByButton("login").Submit(); err != nil{
+	if err = bd.page.FindByButton("login").Submit(); err != nil {
 		log.Fatal("Something is wrong:", err)
 	}
 
