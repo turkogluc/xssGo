@@ -8,8 +8,11 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
-	//"github.com/tebeka/selenium"
 	"time"
+	"log"
+	"flag"
+	"strings"
+	"os"
 )
 
 type empty struct {
@@ -20,26 +23,24 @@ var targetURLs map[string]empty
 var vulnerableURLs map[string]empty
 var loginInformation map[string]string
 var urlSTR, host, loginURL string
+var usage,description string
 var urlParsed *url.URL
 var bow *browser.Browser
 var badUrls []string
 var jar *cookiejar.Jar
 var cookies []*http.Cookie
+var goCookies []*http.Cookie
 var payloads []string
 var level int
-var cd *chromeDriver
+var cd *ChromeDriver
 var startTime time.Time
 
 func init() {
-	startTime = time.Now()
-	p1 := []string{"<script>alert('XSS');</script>", "<BODY ONLOAD=alert('XSS')>", "\";alert(1);//", "';alert(1);//"}
-	p2 := []string{"><script>alert(0)</script>", "\" onfocus=\"alert(1);", "javascript:alert(1)", "\"><img src=\"x:x\" onerror=\"alert(0)\">"}
 
-	payloads = append(payloads, p1...)
-	payloads = append(payloads, p2...)
+	payloads = append(payloads, "<script>alert('XSS');</script>")
 
 	bow = surf.NewBrowser()
-	cd = &chromeDriver{}
+	cd = &ChromeDriver{}
 
 	//bow.SetAttribute(browser.SendReferer, false)
 	//bow.SetAttribute(browser.MetaRefreshHandling, false)
@@ -56,26 +57,144 @@ func init() {
 	vulnerableURLs = map[string]empty{}
 	loginInformation = make(map[string]string)
 
-	//urlSTR = "http://192.168.56.101"
-	urlSTR = "http://localhost/dvwa/"
-	//urlSTR = "http://localhost/bwapp/"
-	//urlSTR = "https://www.seslisozluk.net/"
-	//urlSTR = "https://xss-game.appspot.com"
-	urlParsed, _ = url.Parse(urlSTR)
-
-	host = urlParsed.Host
-	level = 3
-
 	badUrls = append(badUrls, []string{"%C3%A7%C4%B1k%C4%B1%C5%9F", "logout", ".png", ".jpg", ".jpeg", ".mp3", ".mp4", ".avi", ".gif", ".svg", "setup", "csrf"}...)
 	badUrls = append(badUrls, []string{"reset", "user_extra", "password_change"}...)
 
-	//fmt.Println(time.Now().Unix())
 }
 
-// TODO ## List ##
+func main() {
 
-// TODO Accept Cookies from JSON File
-// 		Inserting to both modules
+	flagURL := flag.String("URL","http://localhost/dvwa/","Target Url to be scanned")
+	flagLevel := flag.Int("Level",3,"Scan Depth Level")
+	flagLogin := flag.String("LoginPage","http://localhost/dvwa/login.php","Authenticate via login page.")
+	flagCookie := flag.String("CookieFile","","Authenticate via cookies. Give path of cookie file as json")
+	flagPayload := flag.String("PayloadFile","payloads.txt","Set Payloads from file")
+	flagHeadless := flag.Bool("Headless",false,"Browser can run as headless")
+	flagBlackList := flag.String("BlackList","","Forbid some links to be visited via giving comma seperated list")
+	flagHelp  := flag.Bool("Help",false,"Print usage")
+
+	flag.Parse()
+	if *flagHelp {
+		printUsage()
+		os.Exit(1)
+	}
+
+	urlSTR = *flagURL
+	urlParsed, _ = url.Parse(urlSTR)
+	host = urlParsed.Host
+
+	// add the first target to list
+	targetURLs[urlSTR] = empty{}
+
+	level = *flagLevel
+
+	readPayloads(*flagPayload)
+
+	if *flagBlackList != "" {
+		blackList := *flagBlackList
+		arr := strings.Split(blackList,",")
+		badUrls = append(badUrls,arr...)
+	}
+	browserArgs := []string{"--disable-xss-auditor"}
+	if *flagHeadless {
+		browserArgs = append(browserArgs, "--headless")
+		browserArgs = append(browserArgs, "--disable-gpu")
+	}
+	// start chrome driver
+	cd.initDriver(browserArgs)
+	fmt.Println("")
+	defer cd.stopDriver()
+
+	// open the initial url in both browsers
+	err := bow.Open(urlSTR)
+	if err != nil {
+		log.Println("PANIC:", err)
+	}
+	if err := cd.webDriver.Get(urlSTR); err != nil {
+		log.Println("PANIC:", err)
+	}
+
+	if *flagLogin != "" {
+		loginURL = *flagLogin
+		LoginToBow(loginURL)
+		cd.loginToChromeAuto(loginURL,loginInformation)
+
+	}else if *flagCookie != "" {
+		// reading from file
+		cs,err :=readCookiesFromFile(*flagCookie)
+		if err != nil {
+			panic(err)
+		}
+		// setting cookies to bow browser
+		SetCookiesToBow(cs)
+		// setting cookies to chrome
+		cookies := convertCookiesToGolang(cs)
+		cd.setCookiesToChrome(*flagURL,cookies)
+	}
+
+	startTime = time.Now()
+	defer finishTime()
+
+	//crawling
+	crawlURL(urlSTR)
+	if level > 1 {
+		for i := 2; i <= level; i++ {
+			for tempURL, _ := range targetURLs {
+				crawlURL(tempURL)
+			}
+		}
+	}
+	time.Sleep(250*time.Millisecond)
+
+	// List of target Urls
+	i := 1
+	log.Println("List of Target Urls:")
+	for u, _ := range targetURLs {
+		fmt.Println(i, u)
+		i++
+	}
+	time.Sleep(250*time.Millisecond)
+
+	// Add one extra url to list
+	targetURLs["http://localhost/dvwa/vulnerabilities/xss_d/?default=English"] = empty{}
+
+	// Query Parameters
+	log.Println("Query parameters are going to be tested")
+	for u := range targetURLs {
+		controlQueryParameters(u)
+	}
+	time.Sleep(250*time.Millisecond)
+
+	// Form input variables
+	log.Println("Form inputs are going to be tested")
+	for u := range targetURLs {
+		controlFormInputs(u)
+	}
+
+	// Output, Vulnerable URLs
+	fmt.Println("")
+	fmt.Println("vulnerable urls:")
+	j := 1
+	for i, v := range vulnerableURLs {
+		fmt.Println(j, ":", i, " payload:", v.payload)
+		j++
+	}
+
+
+
+
+	// ###### tests ######
+
+	//cd.trySelection("http://localhost/dvwa/security.php")
+
+}
+
+func finishTime() {
+	fmt.Println("Time Elapsed:", time.Since(startTime))
+}
+
+
+// TODO ## List ##
 
 // TODO Command line arguments with flag
 //		Welcome message
@@ -90,144 +209,4 @@ func init() {
 //		To increase the speed run on all cores of CPU
 
 
-
-
-
-func main() {
-
-	defer finishTime()
-	//err := bow.Open(urlSTR)
-	//if err != nil {
-	//	log.Println("PANIC:", err)
-	//}
-	//
-	//cs,err := readCookiesFromFile("cookies.json")
-	//if err != nil{
-	//	panic("couldnt read cookies from file")
-	//}
-	//SetCookies(cs)
-	//
-	//x := bow.SiteCookies()
-	//log.Println(x)
-	//err = bow.Open(urlSTR)
-	//if err != nil {
-	//	log.Println("PANIC:", err)
-	//}
-	//
-	//s,_:= bow.Dom().Html()
-	//fmt.Println(s)
-	//
-	//// add the first target to list
-	//targetURLs[urlSTR] = empty{}
-	//
-	////LoginByCredentials(urlSTR,"admin","password")
-	//Login(urlSTR)
-	//
-	////crawling
-	//crawlURL(urlSTR)
-	//
-	//if level > 1 {
-	//	for i := 2; i <= level; i++ {
-	//		for tempURL, _ := range targetURLs {
-	//			crawlURL(tempURL)
-	//		}
-	//	}
-	//}
-	////
-	//i := 1
-	//for u, _ := range targetURLs {
-	//	fmt.Println(i, u)
-	//	i++
-	//}
-
-
-
-
-
-	//cd.initDriver()
-	//defer cd.stopDriver()
-	////cd.loginAuto(urlSTR)		   // let the chrome-driver log in with credentials taken from user
-	//
-	//
-	//
-	//cd.webDriver.Get("http://localhost/dvwa/vulnerabilities/xss_d/?default=English")
-	//
-	//
-	//cs,err := readCookiesFromFile("cookies.json")
-	//if err != nil{
-	//	panic("couldnt read cookies from file")
-	//}
-	//
-	//goCookie := convertCookiesToGolang(cs)
-	//cd.setCookiesToChrome(goCookie)
-	//
-	//cd.webDriver.Get("http://localhost/dvwa/vulnerabilities/xss_d/?default=English")
-	//
-	//
-	//targetURLs["http://localhost/dvwa/vulnerabilities/xss_d/?default=English"] = empty{}
-	//
-	//log.Println("Query parameters are going to be tested")
-	//for u := range targetURLs {
-	//	controlQueryParameters(u)
-	//}
-	//
-	//log.Println("Form inputs are going to be tested")
-	//for u := range targetURLs {
-	//	controlFormInputs(u)
-	//}
-
-	// ###### tests ######
-
-	//controlFormInputs("http://localhost/dvwa/vulnerabilities/xss_d/")
-
-	//cd.trySelection("http://localhost/dvwa/security.php")
-
-	// test
-	//controlFormInputs("http://localhost/dvwa/vulnerabilities/xss_s/")
-	// controlFormInputs("http://localhost/dvwa/vulnerabilities/xss_s/")
-
-	//cd.formTest("http://192.168.56.101/xss/example8.php",payloads)
-
-	//controlQueryParameters("http://192.168.56.101/xss/example9.php#hacker")
-
-	// test
-	//cd.pageTest("http://localhost/dvwa/vulnerabilities/xss_d/?default=%3Cscript%3Ealert(1);%3C/script%3E")
-	//time.Sleep(5*time.Second)
-	//cd.pageTest("http://192.168.56.101/xss/example3.php?name=%3CBODY+ONLOAD%3Dalert(%27cemal%27)%3E")	//xss
-	//cd.pageTest("http://192.168.56.101/xss/example1.php?name=%3Cbody%20onload=alert(1)%3E")		// xss
-	//cd.pageTest("http://192.168.56.101/codeexec/example1.php?name=hacker")
-	//cd.pageTest("http://192.168.56.101/xss/example3.php?name=%3CBODY+ONLOAD%3Dalert(%27cemal%27)%3E")	//xss
-	//cd.pageTest("http://192.168.56.101/xss/example1.php?name=%3Cbody%20onload=alert(1)%3E")		// xss
-	//cd.pageTest("http://192.168.56.101/codeexec/example1.php?name=hacker")
-	//cd.pageTest("http://192.168.56.101/xss/example2.php?name=%3CBODY+ONLOAD%3Dalert(%27XSS%27)%3E") //xss
-
-	// test
-	//cd.pageTest("http://localhost/dvwa/vulnerabilities/xss_r/?name=%3Cscript%3Ealert(1)%3B%3C%2Fscript%3E")
-	//cd.pageTest("http://localhost/dvwa/vulnerabilities/weak_id/")
-	//cd.pageTest("http://localhost/dvwa/vulnerabilities/brute/")
-	//cd.pageTest("http://localhost/dvwa/instructions.php")
-	//cd.pageTest("http://localhost/dvwa/vulnerabilities/xss_r/?name=<BODY+ONLOAD%3Dalert('XSS')>")
-
-	//
-	////for u := range targetURLs{
-	////	controlFormInputs(u,bow.SiteCookies())
-	////}
-	//
-
-	//Output
-	fmt.Println(" ")
-	fmt.Println("vulnerable urls:")
-	j := 1
-	for i, v := range vulnerableURLs {
-		fmt.Println(j, ":", i, " payload:", v.payload)
-		j++
-	}
-}
-
-
-
-
-
-func finishTime() {
-	fmt.Println("Time Elapsed:", time.Since(startTime))
-}
+// FIXME Implement cookie insertion for bow

@@ -24,8 +24,8 @@ type SingleCookie struct {
 	HttpOnly 	bool	`json:"httpOnly"`
 }
 
-func convertCookiesToGolang(cs *CookieStore) []*http.Cookie{
-	goCookies := []*http.Cookie{}
+func convertCookiesToGolang(cs *CookieStore) []*http.Cookie {
+	//goCookies = []*http.Cookie{}
 	// copying my cookie type to goLang http.cookie
 	for _,sCookie := range cs.SCookies{
 		expiration := time.Unix(sCookie.Expires,0)
@@ -45,32 +45,45 @@ func convertCookiesToGolang(cs *CookieStore) []*http.Cookie{
 
 func SetCookiesToBow(cs *CookieStore) {
 
-	//cookie := &http.Cookie{
-	//	Domain: "localhost",
-	//	Name:   "PHPSESSID",
-	//	Value:  "j5mdm88v2ougl2kjrrinsfcsd1",
-	//}
-	//cookies = append(cookies, cookie)
+	// FIXME
+
+	////cookie := &http.Cookie{
+	////	Domain: "localhost",
+	////	Name:   "PHPSESSID",
+	////	Value:  "1l2fb11illqvns8ucu0fku1684",
+	////}
+	////cookies = append(cookies, cookie)
+	////
+	////cookie = &http.Cookie{
+	////	Domain: "localhost",
+	////	Name:   "security",
+	////	Value:  "impossible",
+	////}
+	////cookies = append(cookies, cookie)
 	//
-	//cookie = &http.Cookie{
-	//	Domain: "localhost",
-	//	Name:   "security",
-	//	Value:  "impossible",
-	//}
-	//cookies = append(cookies, cookie)
-
-
-
-	goCookies := convertCookiesToGolang(cs)
-
-	jar.SetCookies(urlParsed, goCookies)
-	bow.SetCookieJar(jar)
-
-	fmt.Println("Cookies are set successfully :")
-	//for _, c := range bow.CookieJar().Cookies(urlParsed) {
-	//	res, _ := json.Marshal(c)
-	//	fmt.Println(string(res))
-	//}
+	//
+	//
+	//jar.SetCookies(urlParsed, convertCookiesToGolang(cs))
+	//bow.SetCookieJar(jar)
+	//
+	//
+	//
+	//
+	////
+	////
+	////goCookies := convertCookiesToGolang(cs)
+	////jar.SetCookies(urlParsed,goCookies)
+	////bow.SetCookieJar(jar)
+	////
+	////
+	////fmt.Println(bow.SiteCookies())
+	//
+	//
+	//fmt.Println("Cookies are set successfully :")
+	////for _, c := range bow.CookieJar().Cookies(urlParsed) {
+	////	res, _ := json.Marshal(c)
+	////	fmt.Println(string(res))
+	////}
 
 }
 

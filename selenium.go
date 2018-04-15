@@ -13,7 +13,7 @@ import (
 	"math"
 )
 
-type chromeDriver struct {
+type ChromeDriver struct {
 	service   *selenium.Service
 	err       error
 	webDriver selenium.WebDriver
@@ -21,9 +21,11 @@ type chromeDriver struct {
 	mutex     *sync.Mutex
 }
 
-func (cd *chromeDriver) initDriver() {
+func (cd *ChromeDriver) initDriver(browserArgs []string) {
 	cd.mutex = &sync.Mutex{}
 	port := 1234
+
+	fmt.Println("Chrome driver is going to be opened..")
 	cd.service, cd.err = selenium.NewChromeDriverService("/home/cemal/chromedriver", port)
 	if cd.err != nil {
 		fmt.Println("couldnt open service")
@@ -32,15 +34,13 @@ func (cd *chromeDriver) initDriver() {
 
 	// Connect to the WebDriver instance running locally.
 	cd.caps = selenium.Capabilities{}
-	cd.caps.AddChrome(chrome.Capabilities{Args: []string{"--disable-xss-auditor"}}) // ,"--headless", "--disable-gpu" ,"--proxy-server=http://localhost:8080"
+	cd.caps.AddChrome(chrome.Capabilities{Args: browserArgs}) // ,"--headless", "--disable-gpu" ,"--proxy-server=http://localhost:8080"
 
 
 	cd.webDriver, cd.err = selenium.NewRemote(cd.caps, fmt.Sprintf("http://localhost:%d/wd/hub", port))
 	if cd.err != nil {
 		panic(cd.err)
 	}
-
-
 
 	//cd.webDriver.SetPageLoadTimeout(800*time.Millisecond)
 	//err := cd.webDriver.SetImplicitWaitTimeout(80*time.Millisecond)
@@ -49,18 +49,16 @@ func (cd *chromeDriver) initDriver() {
 	//}
 }
 
-func (cd *chromeDriver) stopDriver() {
+func (cd *ChromeDriver) stopDriver() {
 	cd.service.Stop()
 	cd.webDriver.Quit()
 }
 
-func (cd *chromeDriver) login(url string) {
+func (cd *ChromeDriver) login(url string) {
 	// Navigate to the simple playground interface.
 	if err := cd.webDriver.Get(url); err != nil {
 		log.Println("PANIC:", err)
 	}
-
-
 
 	// Find all Forms
 	forms, err := cd.webDriver.FindElements(selenium.ByXPATH, "//form")
@@ -144,7 +142,7 @@ func (cd *chromeDriver) login(url string) {
 	}
 }
 
-func (cd *chromeDriver) formTest(url string, payloads []string) (bool, string) {
+func (cd *ChromeDriver) formTest(url string, payloads []string) (bool, string) {
 
 	cd.mutex.Lock()
 	defer cd.mutex.Unlock()
@@ -257,7 +255,7 @@ func (cd *chromeDriver) formTest(url string, payloads []string) (bool, string) {
 	return false, ""
 }
 
-func (cd *chromeDriver) pageTest(url string) bool {
+func (cd *ChromeDriver) pageTest(url string) bool {
 
 	cd.mutex.Lock()
 	defer cd.mutex.Unlock()
@@ -308,31 +306,7 @@ func (cd *chromeDriver) pageTest(url string) bool {
 
 }
 
-func (cd *chromeDriver) loginW(url string) {
-	uname := "admin"
-	pwd := "password"
-
-	// Navigate to the url
-	if err := cd.webDriver.Get(url); err != nil {
-		log.Println(err)
-	}
-
-	form, err := cd.webDriver.FindElement(selenium.ByTagName, "form")
-	input1, err := form.FindElement(selenium.ByXPATH, "//input[@name='username']")
-	input1.SendKeys(uname)
-	input2, err := form.FindElement(selenium.ByXPATH, "//input[@name='password']")
-	input2.SendKeys(pwd)
-
-	b, err := form.FindElement(selenium.ByXPATH, "//input[@type='submit']")
-
-	err = b.Click()
-
-	fmt.Println(err)
-
-	//time.Sleep(5*time.Second)
-
-}
-func (cd *chromeDriver) loginAuto(url string) {
+func (cd *ChromeDriver) loginToChromeAuto(url string,loginInformation map[string]string) {
 
 	// Navigate to the url
 	if err := cd.webDriver.Get(url); err != nil {
@@ -344,35 +318,33 @@ func (cd *chromeDriver) loginAuto(url string) {
 		panic("no login form")
 	}
 
-	fmt.Println(loginInformation)
-
 	for inputName, value := range loginInformation {
 		inputStringList := []string{"//input[@name='", inputName, "']"}
 		inputString := strings.Join(inputStringList, "")
-		fmt.Println(inputString)
 		inputField, err := form.FindElement(selenium.ByXPATH, inputString)
 		if err != nil {
 			panic("input field could not found")
 		}
 		inputField.SendKeys(value)
 	}
-
+	time.Sleep(5*time.Second)
 	button, err := cd.webDriver.FindElement(selenium.ByXPATH, "//input[@type='submit']")
 	if err != nil {
 		panic("could not send form")
 	}
-	button.Click()
+	err = button.Click()
+	if err != nil {
+		panic("could not log in to chrome")
+	}
+	fmt.Println("Succesfully loged in to chrome browser..")
 
 }
 
-func (cd *chromeDriver) trySelection(url string) {
+func (cd *ChromeDriver) trySelection(url string) {
 	// Navigate to the url
 	if err := cd.webDriver.Get(url); err != nil {
 		log.Println(err)
 	}
-
-
-
 
 	selection, err := cd.webDriver.FindElement(selenium.ByXPATH, "//select")
 	if err != nil {
@@ -398,7 +370,14 @@ func (cd *chromeDriver) trySelection(url string) {
 	time.Sleep(5*time.Second)
 }
 
-func (cd *chromeDriver) setCookiesToChrome(goCookies []*http.Cookie){
+func (cd *ChromeDriver) setCookiesToChrome(url string,goCookies []*http.Cookie){
+
+	// Navigate to the url
+	if err := cd.webDriver.Get(url); err != nil {
+		log.Println(err)
+	}
+
+
 	// WARNING: First You need to open the page before setting cookies
 	cd.webDriver.DeleteAllCookies()
 
@@ -425,6 +404,30 @@ func (cd *chromeDriver) setCookiesToChrome(goCookies []*http.Cookie){
 	}
 
 	log.Println(c)
-
 }
+
+//func (cd *chromeDriver) loginW(url string) {
+//	uname := "admin"
+//	pwd := "password"
+//
+//	// Navigate to the url
+//	if err := cd.webDriver.Get(url); err != nil {
+//		log.Println(err)
+//	}
+//
+//	form, err := cd.webDriver.FindElement(selenium.ByTagName, "form")
+//	input1, err := form.FindElement(selenium.ByXPATH, "//input[@name='username']")
+//	input1.SendKeys(uname)
+//	input2, err := form.FindElement(selenium.ByXPATH, "//input[@name='password']")
+//	input2.SendKeys(pwd)
+//
+//	b, err := form.FindElement(selenium.ByXPATH, "//input[@type='submit']")
+//
+//	err = b.Click()
+//
+//	fmt.Println(err)
+//
+//	//time.Sleep(5*time.Second)
+//
+//}
 
