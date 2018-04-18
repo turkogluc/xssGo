@@ -2,65 +2,29 @@ package main
 
 import (
 	"fmt"
-	"github.com/headzoo/surf"
-	"github.com/headzoo/surf/agent"
-	"github.com/headzoo/surf/browser"
-	"net/http"
-	"net/http/cookiejar"
 	"net/url"
 	"time"
 	"log"
 	"flag"
 	"strings"
 	"os"
+	. "xssGo/source"
 )
 
-type empty struct {
-	payload string
-}
-
-var targetURLs map[string]empty
-var vulnerableURLs map[string]empty
-var loginInformation map[string]string
-var urlSTR, host, loginURL string
-var usage,description string
-var urlParsed *url.URL
-var bow *browser.Browser
-var badUrls []string
-var jar *cookiejar.Jar
-var cookies []*http.Cookie
-var goCookies []*http.Cookie
-var payloads []string
-var level int
-var cd *ChromeDriver
-var startTime time.Time
-
 func init() {
+	InitEntities()
+	// Init logging
+	var err error
+	LogFile, err = os.OpenFile("log.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalf("error opening file: %v", err)
+	}
 
-	payloads = append(payloads, "<script>alert('XSS');</script>")
-
-	bow = surf.NewBrowser()
-	cd = &ChromeDriver{}
-
-	//bow.SetAttribute(browser.SendReferer, false)
-	//bow.SetAttribute(browser.MetaRefreshHandling, false)
-	bow.SetAttribute(browser.FollowRedirects, true)
-	bow.SetUserAgent(agent.Firefox())
-
-	// we create a cookie jar that will provide being statefull
-	// after attaching a cookie jar to http.Client, http.client will
-	// add cookies and update in every request and response
-	jar, _ = cookiejar.New(nil)
-	bow.SetCookieJar(jar)
-
-	targetURLs = map[string]empty{}
-	vulnerableURLs = map[string]empty{}
-	loginInformation = make(map[string]string)
-
-	badUrls = append(badUrls, []string{"%C3%A7%C4%B1k%C4%B1%C5%9F", "logout", ".png", ".jpg", ".jpeg", ".mp3", ".mp4", ".avi", ".gif", ".svg", "setup", "csrf"}...)
-	badUrls = append(badUrls, []string{"reset", "user_extra", "password_change","country_result.jsp"}...)
-
+	log.SetOutput(LogFile)
+	InitLogger(LogFile, LogFile, LogFile, true)
 }
+
+// TODO : bad urls için map yap, kontrolu daha kolay, ok := map[sth]
 
 // FIXME: There is a bug for crawling, urls need to be parsed and analyzed.
 //5 https://www.numbeo.com/cost-of-living/country_result.jsp?country=Croatia
@@ -68,37 +32,41 @@ func init() {
 
 func main() {
 
-	flagURL := flag.String("URL","http://localhost/dvwa/","Target Url to be scanned")
-	flagLevel := flag.Int("Level",2,"Scan Depth Level")
-	flagLogin := flag.String("LoginPage","","Authenticate via login page.")
-	flagCookie := flag.String("CookieFile","","Authenticate via cookies. Give path of cookie file as json")
-	flagPayload := flag.String("PayloadFile","payloads.txt","Set Payloads from file")
-	flagHeadless := flag.Bool("Headless",false,"Browser can run as headless")
-	flagBlackList := flag.String("BlackList","","Forbid some links to be visited via giving comma seperated list")
-	flagHelp  := flag.Bool("Help",false,"Print usage")
+	//LogDebug("debug message hello 1")
+	//LogInfo("info message")
+	//LogError("error message")
+
+	flagURL := flag.String("url","http://localhost/dvwa/","Target Url to be scanned")
+	flagLevel := flag.Int("level",2,"Scan Depth Level")
+	flagLogin := flag.String("loginPage","","Authenticate via login page.")
+	flagCookie := flag.String("cookieFile","","Authenticate via cookies. Give path of cookie file as json")
+	flagPayload := flag.String("payloadFile","payloads.txt","Set Payloads from file")
+	flagHeadless := flag.Bool("headless",false,"Browser can run as headless")
+	flagBlackList := flag.String("blackList","","Forbid some links to be visited via giving comma seperated list")
+	flagHelp  := flag.Bool("help",false,"Print usage")
 
 	flag.Parse()
 	if *flagHelp {
-		printUsage()
+		PrintUsage()
 		os.Exit(1)
 	}
 
-	//urlSTR = *flagURL
-	urlSTR = "https://www.numbeo.com"
-	urlParsed, _ = url.Parse(urlSTR)
-	host = urlParsed.Host
+	UrlSTR = *flagURL
+	//UrlSTR = "https://www.numbeo.com"
+	UrlParsed, _ = url.Parse(UrlSTR)
+	Host = UrlParsed.Host
 
 	// add the first target to list
-	targetURLs[urlSTR] = empty{}
+	TargetURLs[UrlSTR] = Empty{}
 
-	level = *flagLevel
+	Level = *flagLevel
 
-	readPayloads(*flagPayload)
+	ReadPayloads(*flagPayload)
 
 	if *flagBlackList != "" {
 		blackList := *flagBlackList
 		arr := strings.Split(blackList,",")
-		badUrls = append(badUrls,arr...)
+		BadUrls = append(BadUrls,arr...)
 	}
 	browserArgs := []string{"--disable-xss-auditor"}
 	if *flagHeadless {
@@ -106,46 +74,49 @@ func main() {
 		browserArgs = append(browserArgs, "--disable-gpu")
 	}
 	// start chrome driver
-	cd.initDriver(browserArgs)
+	CD.InitDriver(browserArgs)
 	fmt.Println("")
-	defer cd.stopDriver()
+	defer CD.StopDriver()
 
 	// open the initial url in both browsers
-	err := bow.Open(urlSTR)
+	err := Bow.Open(UrlSTR)
 	if err != nil {
-		log.Println("PANIC:", err)
+		LogError(err)
 	}
-	if err := cd.webDriver.Get(urlSTR); err != nil {
-		log.Println("PANIC:", err)
+	if err := CD.WebDriver.Get(UrlSTR); err != nil {
+		LogError(err)
 	}
 
 	if *flagLogin != "" {
-		loginURL = *flagLogin
-		LoginToBow(loginURL)
-		cd.loginToChromeAuto(loginURL,loginInformation)
+		LoginURL = *flagLogin
+		LoginToBow(LoginURL)
+		CD.LoginToChromeAuto(LoginURL,LoginInformation)
 
 	}else if *flagCookie != "" {
 		// reading from file
-		cs,err :=readCookiesFromFile(*flagCookie)
+		cs,err := ReadCookiesFromFile(*flagCookie)
 		if err != nil {
+			LogError(err)
 			panic(err)
 		}
 		// setting cookies to bow browser
 		SetCookiesToBow(cs)
 		// setting cookies to chrome
-		cookies := convertCookiesToGolang(cs)
-		cd.setCookiesToChrome(*flagURL,cookies)
+		cookies := ConvertCookiesToGolang(cs)
+		CD.SetCookiesToChrome(*flagURL,cookies)
 	}
 
-	startTime = time.Now()
+	StartTime = time.Now()
 	defer finishTime()
 
+	fmt.Println("Page traversal operation is started:")
+	log.Println("Page traversal operation is started:")
 	//crawling
-	crawlURL(urlSTR)
-	if level > 1 {
-		for i := 2; i <= level; i++ {
-			for tempURL, _ := range targetURLs {
-				crawlURL(tempURL)
+	CrawlURL(UrlSTR)
+	if Level > 1 {
+		for i := 2; i <= Level; i++ {
+			for tempURL, _ := range TargetURLs {
+				CrawlURL(tempURL)
 			}
 		}
 	}
@@ -153,8 +124,9 @@ func main() {
 
 	// List of target Urls
 	i := 1
+	fmt.Println("List of Target Urls:")
 	log.Println("List of Target Urls:")
-	for u, _ := range targetURLs {
+	for u, _ := range TargetURLs {
 		fmt.Println(i, u)
 		i++
 	}
@@ -165,23 +137,25 @@ func main() {
 
 	// Query Parameters
 	log.Println("Query parameters are going to be tested")
-	for u := range targetURLs {
-		controlQueryParameters(u)
+	fmt.Println("Query parameters are going to be tested")
+	for u := range TargetURLs {
+		ControlQueryParameters(u)
 	}
 	time.Sleep(250*time.Millisecond)
 
 	// Form input variables
 	log.Println("Form inputs are going to be tested")
-	for u := range targetURLs {
-		controlFormInputs(u)
+	fmt.Println("Form inputs are going to be tested")
+	for u := range TargetURLs {
+		ControlFormInputs(u)
 	}
 
 	// Output, Vulnerable URLs
 	fmt.Println("")
 	fmt.Println("vulnerable urls:")
 	j := 1
-	for i, v := range vulnerableURLs {
-		fmt.Println(j, ":", i, " payload:", v.payload)
+	for i, v := range VulnerableURLs {
+		fmt.Println(j, ":", i, " payload:", v.Payload)
 		j++
 	}
 
@@ -195,7 +169,7 @@ func main() {
 }
 
 func finishTime() {
-	fmt.Println("Time Elapsed:", time.Since(startTime))
+	fmt.Println("Time Elapsed:", time.Since(StartTime))
 }
 
 

@@ -1,4 +1,4 @@
-package main
+package source
 
 import (
 	"fmt"
@@ -6,25 +6,26 @@ import (
 	"strings"
 )
 
-func crawlURL(u string) {
+func CrawlURL(u string) {
 
 	// Crawler travers as BFS tree
 
-	err := bow.Open(u)
+	err := Bow.Open(u)
 	if err != nil {
+		LogError(err)
 		panic(err)
 	}
 
 	// return all links in the current page
-	links := bow.Links()
+	links := Bow.Links()
 
 
 	//i:=0
 	for _, link := range links {
 
-		_, ifContains := targetURLs[link.Url().String()]
+		_, ifContains := TargetURLs[link.Url().String()]
 		whitelisted := true
-		for _, b := range badUrls {
+		for _, b := range BadUrls {
 			if strings.Contains(link.Url().String(), b) {
 				whitelisted = false
 				break
@@ -35,9 +36,9 @@ func crawlURL(u string) {
 		// search for same domain
 		// do not allow unwanted urls like: png,jpg,pdf etc.
 		// add if the URL not already in slice
-		if strings.Compare(host, link.Url().Host) == 0 && !ifContains && whitelisted {
+		if strings.Compare(Host, link.Url().Host) == 0 && !ifContains && whitelisted {
 
-			targetURLs[link.Url().String()] = empty{}
+			TargetURLs[link.Url().String()] = Empty{}
 			//i++
 			//fmt.Println(i, link.Url())
 
@@ -48,23 +49,24 @@ func crawlURL(u string) {
 
 func LoginByCredentials(loginURL string, user string, pass string) {
 
-	fm, _ := bow.Form("form")
+	fm, _ := Bow.Form("form")
 	fm.Input("username", "admin")
 	fm.Input("password", "password")
-	//fmt.Println(bow.Dom().Html())
+	//fmt.Println(Bow.Dom().Html())
 	fm.Submit()
-	//fmt.Println(bow.Dom().Html())
+	//fmt.Println(Bow.Dom().Html())
 
 }
 
 func LoginToBow(loginURL string) {
 
-	err := bow.Open(loginURL)
+	err := Bow.Open(loginURL)
 	if err != nil {
+		LogError(err)
 		panic(err)
 	}
 
-	allForms := bow.Forms()
+	allForms := Bow.Forms()
 	var text string
 
 	for _, fm := range allForms {
@@ -78,7 +80,7 @@ func LoginToBow(loginURL string) {
 							fmt.Print("Enter ", inputName, ":")
 							fmt.Scanln(&text)
 							fm.Input(inputName, text)
-							loginInformation[inputName] = text
+							LoginInformation[inputName] = text
 						}
 					}
 				}
@@ -87,18 +89,19 @@ func LoginToBow(loginURL string) {
 
 			err = fm.Submit()
 			if err != nil {
+				LogError(err)
 				panic(err)
 			}
 
 			fmt.Println("")
-			fmt.Println("Succesfully loged in to bow browser..")
+			fmt.Println("Succesfully loged in to Bow browser..")
 
-			//s,_ := bow.Dom().Html()
+			//s,_ := Bow.Dom().Html()
 			//fmt.Println(s)
 			//time.Sleep(12*time.Second)
 			//fmt.Println("Cookies are set as:")
 			//
-			//for _, c := range bow.CookieJar().Cookies(urlParsed) {
+			//for _, c := range Bow.CookieJar().Cookies(UrlParsed) {
 			//	res, _ := json.Marshal(c)
 			//	fmt.Println(string(res))
 			//}

@@ -1,17 +1,17 @@
-package main
+package source
 
 import "net/url"
 
-func controlFormInputs(u string) {
-	isVul, p := cd.formTest(u, payloads)
+func ControlFormInputs(u string) {
+	isVul, p := CD.FormTest(u, Payloads)
 	if isVul {
-		if _, contains := vulnerableURLs[u]; !contains {
-			vulnerableURLs[u] = empty{payload: p}
+		if _, contains := VulnerableURLs[u]; !contains {
+			VulnerableURLs[u] = Empty{Payload: p}
 		}
 	}
 }
 
-func controlQueryParameters(u string) {
+func ControlQueryParameters(u string) {
 	// convert string to url.URL
 	originalURL, _ := url.Parse(u)
 	modifiedURL := originalURL
@@ -23,13 +23,13 @@ func controlQueryParameters(u string) {
 	// chrome-headless disable-xss-auditor ?
 
 	if modifiedURL.Fragment != "" {
-		for _, payload := range payloads {
+		for _, payload := range Payloads {
 
 			modifiedURL.Fragment = payload
 
-			if cd.pageTest(modifiedURL.String()) {
-				if _, contains := vulnerableURLs[modifiedURL.String()]; !contains {
-					vulnerableURLs[modifiedURL.String()] = empty{}
+			if CD.PageTest(modifiedURL.String()) {
+				if _, contains := VulnerableURLs[modifiedURL.String()]; !contains {
+					VulnerableURLs[modifiedURL.String()] = Empty{}
 				}
 				break
 			}
@@ -42,7 +42,7 @@ func controlQueryParameters(u string) {
 	// checking query parameters Ex: username=xx&email=yy
 	// only one parameter is changed at once # fix ?
 	if len(q) > 0 {
-		for _, payload := range payloads {
+		for _, payload := range Payloads {
 			for parameter := range q {
 
 
@@ -52,9 +52,9 @@ func controlQueryParameters(u string) {
 			}
 			modifiedURL.RawQuery = q.Encode()
 
-			if cd.pageTest(modifiedURL.String()) {
-				if _, contains := vulnerableURLs[modifiedURL.String()]; !contains {
-					vulnerableURLs[modifiedURL.String()] = empty{}
+			if CD.PageTest(modifiedURL.String()) {
+				if _, contains := VulnerableURLs[modifiedURL.String()]; !contains {
+					VulnerableURLs[modifiedURL.String()] = Empty{}
 				}
 				break
 			}

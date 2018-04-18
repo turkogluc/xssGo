@@ -1,17 +1,15 @@
-package main
+package source
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"net/http"
 	"time"
 	"encoding/json"
-	"log"
 )
 
 type CookieStore struct {
-	SCookies		[]SingleCookie	`json:"cookies"`
+	SCookies		[]SingleCookie	`json:"Cookies"`
 }
 
 type SingleCookie struct {
@@ -24,8 +22,8 @@ type SingleCookie struct {
 	HttpOnly 	bool	`json:"httpOnly"`
 }
 
-func convertCookiesToGolang(cs *CookieStore) []*http.Cookie {
-	//goCookies = []*http.Cookie{}
+func ConvertCookiesToGolang(cs *CookieStore) []*http.Cookie {
+	//GoCookies = []*http.Cookie{}
 	// copying my cookie type to goLang http.cookie
 	for _,sCookie := range cs.SCookies{
 		expiration := time.Unix(sCookie.Expires,0)
@@ -38,9 +36,9 @@ func convertCookiesToGolang(cs *CookieStore) []*http.Cookie {
 			Secure:sCookie.Secure,
 			HttpOnly:sCookie.HttpOnly,
 		}
-		goCookies = append(goCookies, cookie)
+		GoCookies = append(GoCookies, cookie)
 	}
-	return goCookies
+	return GoCookies
 }
 
 func SetCookiesToBow(cs *CookieStore) {
@@ -52,54 +50,54 @@ func SetCookiesToBow(cs *CookieStore) {
 	////	Name:   "PHPSESSID",
 	////	Value:  "1l2fb11illqvns8ucu0fku1684",
 	////}
-	////cookies = append(cookies, cookie)
+	////Cookies = append(Cookies, cookie)
 	////
 	////cookie = &http.Cookie{
 	////	Domain: "localhost",
 	////	Name:   "security",
 	////	Value:  "impossible",
 	////}
-	////cookies = append(cookies, cookie)
+	////Cookies = append(Cookies, cookie)
 	//
 	//
 	//
-	//jar.SetCookies(urlParsed, convertCookiesToGolang(cs))
-	//bow.SetCookieJar(jar)
+	//Jar.SetCookies(UrlParsed, ConvertCookiesToGolang(cs))
+	//Bow.SetCookieJar(Jar)
 	//
 	//
 	//
 	//
 	////
 	////
-	////goCookies := convertCookiesToGolang(cs)
-	////jar.SetCookies(urlParsed,goCookies)
-	////bow.SetCookieJar(jar)
+	////GoCookies := ConvertCookiesToGolang(cs)
+	////Jar.SetCookies(UrlParsed,GoCookies)
+	////Bow.SetCookieJar(Jar)
 	////
 	////
-	////fmt.Println(bow.SiteCookies())
+	////fmt.Println(Bow.SiteCookies())
 	//
 	//
 	//fmt.Println("Cookies are set successfully :")
-	////for _, c := range bow.CookieJar().Cookies(urlParsed) {
+	////for _, c := range Bow.CookieJar().Cookies(UrlParsed) {
 	////	res, _ := json.Marshal(c)
 	////	fmt.Println(string(res))
 	////}
 
 }
 
-func readCookiesFromFile(filePath string) (*CookieStore,error){
+func ReadCookiesFromFile(filePath string) (*CookieStore,error){
 	// change cookie.json with filePath
 	file, e := ioutil.ReadFile(filePath)
 	if e != nil {
-		fmt.Printf("File error: %v\n", e)
+		LogError(e)
 		os.Exit(1)
 	}
 
-	// parse cookies to cookiestore which is only defined to read from json
+	// parse Cookies to cookiestore which is only defined to read from json
 	var cs CookieStore
 	e = json.Unmarshal(file,&cs)
 	if e != nil{
-		log.Println(e)
+		LogError(e)
 		return nil,e
 	}
 	return &cs,e
