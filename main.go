@@ -58,15 +58,19 @@ func init() {
 	loginInformation = make(map[string]string)
 
 	badUrls = append(badUrls, []string{"%C3%A7%C4%B1k%C4%B1%C5%9F", "logout", ".png", ".jpg", ".jpeg", ".mp3", ".mp4", ".avi", ".gif", ".svg", "setup", "csrf"}...)
-	badUrls = append(badUrls, []string{"reset", "user_extra", "password_change"}...)
+	badUrls = append(badUrls, []string{"reset", "user_extra", "password_change","country_result.jsp"}...)
 
 }
+
+// FIXME: There is a bug for crawling, urls need to be parsed and analyzed.
+//5 https://www.numbeo.com/cost-of-living/country_result.jsp?country=Croatia
+//6 https://www.numbeo.com/cost-of-living/country_result.jsp?country=Gambia
 
 func main() {
 
 	flagURL := flag.String("URL","http://localhost/dvwa/","Target Url to be scanned")
-	flagLevel := flag.Int("Level",3,"Scan Depth Level")
-	flagLogin := flag.String("LoginPage","http://localhost/dvwa/login.php","Authenticate via login page.")
+	flagLevel := flag.Int("Level",2,"Scan Depth Level")
+	flagLogin := flag.String("LoginPage","","Authenticate via login page.")
 	flagCookie := flag.String("CookieFile","","Authenticate via cookies. Give path of cookie file as json")
 	flagPayload := flag.String("PayloadFile","payloads.txt","Set Payloads from file")
 	flagHeadless := flag.Bool("Headless",false,"Browser can run as headless")
@@ -79,7 +83,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	urlSTR = *flagURL
+	//urlSTR = *flagURL
+	urlSTR = "https://www.numbeo.com"
 	urlParsed, _ = url.Parse(urlSTR)
 	host = urlParsed.Host
 
@@ -156,7 +161,7 @@ func main() {
 	time.Sleep(250*time.Millisecond)
 
 	// Add one extra url to list
-	targetURLs["http://localhost/dvwa/vulnerabilities/xss_d/?default=English"] = empty{}
+	//targetURLs["http://localhost/dvwa/vulnerabilities/xss_d/?default=English"] = empty{}
 
 	// Query Parameters
 	log.Println("Query parameters are going to be tested")
@@ -196,17 +201,18 @@ func finishTime() {
 
 // TODO ## List ##
 
-// TODO Command line arguments with flag
-//		Welcome message
-//		Usage
-// 		Get Black-list (jpg,png,pdf..)
-//		Payloads from file
-
 // TODO Better Logging and stdout mechanizm (seperated)
-//
 
 // TODO Implement Go routines and sync , maybe workers
 //		To increase the speed run on all cores of CPU
 
 
+// TODO click all buttons for the possibility of having another target link
+
 // FIXME Implement cookie insertion for bow
+
+// DONE Command line arguments with flag
+//		Welcome message
+//		Usage
+// 		Get Black-list (jpg,png,pdf..)
+//		Payloads from file

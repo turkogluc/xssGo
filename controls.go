@@ -40,21 +40,23 @@ func controlQueryParameters(u string) {
 	q := originalURL.Query()
 
 	// checking query parameters Ex: username=xx&email=yy
-	// only one parameter is changed at once
+	// only one parameter is changed at once # fix ?
 	if len(q) > 0 {
-		for parameter := range q {
-			for _, payload := range payloads {
+		for _, payload := range payloads {
+			for parameter := range q {
+
 
 				modifiedURL = originalURL
 				q.Set(parameter, payload)
-				modifiedURL.RawQuery = q.Encode()
 
-				if cd.pageTest(modifiedURL.String()) {
-					if _, contains := vulnerableURLs[modifiedURL.String()]; !contains {
-						vulnerableURLs[modifiedURL.String()] = empty{}
-					}
-					break
+			}
+			modifiedURL.RawQuery = q.Encode()
+
+			if cd.pageTest(modifiedURL.String()) {
+				if _, contains := vulnerableURLs[modifiedURL.String()]; !contains {
+					vulnerableURLs[modifiedURL.String()] = empty{}
 				}
+				break
 			}
 		}
 	}
