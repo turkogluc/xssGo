@@ -15,7 +15,8 @@ type Empty struct {
 	Payload string
 }
 
-var TargetURLs map[string]Empty
+var TargetURLsORIGINAL map[string]Empty
+var TargetURLsALTERED map[string]Empty
 var VulnerableURLs map[string]Empty
 var LoginInformation map[string]string
 var UrlSTR, Host, LoginURL string
@@ -49,10 +50,11 @@ func InitEntities(){
 	Jar, _ = cookiejar.New(nil)
 	Bow.SetCookieJar(Jar)
 
-	TargetURLs = map[string]Empty{}
+	TargetURLsORIGINAL = map[string]Empty{}
+	TargetURLsALTERED = map[string]Empty{}
 	VulnerableURLs = map[string]Empty{}
 	LoginInformation = make(map[string]string)
 
-	BadUrls = append(BadUrls, []string{"%C3%A7%C4%B1k%C4%B1%C5%9F", "logout", ".png", ".jpg", ".jpeg", ".mp3", ".mp4", ".avi", ".gif", ".svg", "setup", "csrf"}...)
-	BadUrls = append(BadUrls, []string{"reset", "user_extra", "password_change","country_result.jsp"}...)
+	BadUrls = append(BadUrls, []string{"%C3%A7%C4%B1k%C4%B1%C5%9F", "logout", ".png", ".jpg", ".jpeg", ".mp3", ".mp4", ".avi", ".gif", ".svg", "setup", "csrf","rar"}...)
+	BadUrls = append(BadUrls, []string{"brute","exec","reset", "user_extra", "password_change","country_result.jsp"}...)
 }

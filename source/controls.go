@@ -61,4 +61,3 @@ func ControlQueryParameters(u string) {
 		}
 	}
 }
-

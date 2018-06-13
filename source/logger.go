@@ -4,10 +4,10 @@ package source
 //import logger "github.com/sirupsen/logrus"
 
 import (
-"io"
-"log"
-"runtime"
-"strings"
+	"io"
+	"log"
+	"runtime"
+	"strings"
 )
 
 var debug bool

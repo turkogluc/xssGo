@@ -23,7 +23,29 @@ func CrawlURL(u string) {
 	//i:=0
 	for _, link := range links {
 
-		_, ifContains := TargetURLs[link.Url().String()]
+		modifiedURL := link.Asset.URL
+
+		if modifiedURL.Fragment != "" {
+			modifiedURL.Fragment = "1"
+		}
+
+		// get query parameters and values as map[string][]string
+		q := modifiedURL.Query()
+
+		// checking query parameters Ex: username=xx&email=yy
+		// only one parameter is changed at once # fix ?
+		if len(q) > 0 {
+
+			for parameter := range q {
+				q.Set(parameter, "1")
+			}
+				modifiedURL.RawQuery = q.Encode()
+
+		}
+
+		// till here
+		_, ifContains := TargetURLsALTERED[modifiedURL.String()]
+
 		whitelisted := true
 		for _, b := range BadUrls {
 			if strings.Contains(link.Url().String(), b) {
@@ -38,7 +60,8 @@ func CrawlURL(u string) {
 		// add if the URL not already in slice
 		if strings.Compare(Host, link.Url().Host) == 0 && !ifContains && whitelisted {
 
-			TargetURLs[link.Url().String()] = Empty{}
+			TargetURLsALTERED[modifiedURL.String()] = Empty{}
+			TargetURLsORIGINAL[link.Url().String()] = Empty{}
 			//i++
 			//fmt.Println(i, link.Url())
 

@@ -182,6 +182,10 @@ func (cd *ChromeDriver) FormTest(url string, payloads []string) (bool, string) {
 			return false, ""
 		}
 
+		if len(forms) < 1 {
+			break
+		}
+
 		// try each Payload
 		for _, form := range forms {
 
@@ -202,6 +206,7 @@ func (cd *ChromeDriver) FormTest(url string, payloads []string) (bool, string) {
 					LogDebug(err)
 				}
 				if InputType == "text" || InputType == "password" {
+					input.Clear()
 					input.SendKeys(payload)
 				}
 			}
@@ -268,8 +273,8 @@ func (cd *ChromeDriver) FormTest(url string, payloads []string) (bool, string) {
 
 func (cd *ChromeDriver) PageTest(url string) bool {
 
-	cd.Mutex.Lock()
-	defer cd.Mutex.Unlock()
+	//cd.Mutex.Lock()
+	//defer cd.Mutex.Unlock()
 
 	var err error
 
@@ -283,6 +288,7 @@ func (cd *ChromeDriver) PageTest(url string) bool {
 	if err != nil {
 		LogDebug(err)
 	} else {
+		fmt.Println("stored xss " , url)
 		LogInfo("stored xss ------------> ", url)
 		return true
 	}
@@ -442,3 +448,51 @@ func (cd *ChromeDriver) SetCookiesToChrome(url string,goCookies []*http.Cookie){
 //
 //}
 
+func (cd *ChromeDriver) EmptyFormTest(url string) {
+	//
+	//cd.Mutex.Lock()
+	//defer cd.Mutex.Unlock()
+	//
+	//// Navigate to the simple playground interface.
+	//if err := cd.WebDriver.Get(url); err != nil {
+	//	LogError(err)
+	//}
+	//
+	//
+	//_, err := cd.WebDriver.AlertText()
+	//if err != nil {
+	//	//log.Println(Err)
+	//} else {
+	//	if err = cd.WebDriver.AcceptAlert(); err != nil{
+	//		LogDebug(err)
+	//	}
+	//	LogInfo("stored xss -------------->", url)
+	//	return true
+	//}
+	//
+	//// for each form all Payloads will be tested
+	//for _, payload := range Payloads {
+	//
+	//	//time.Sleep(100*time.Millisecond)
+	//
+	//	// Find all forms
+	//	forms, err := cd.WebDriver.FindElements(selenium.ByXPATH, "//form")
+	//	if err != nil {
+	//		LogDebug("form could not be found. ERROR:")
+	//		LogDebug(err)
+	//		return false, ""
+	//	}
+	//
+	//	if len(forms) < 1 {
+	//		break
+	//	}
+	//
+	//	// try each Payload
+	//
+	//
+	//		//CD.WebDriver.Back()
+	//
+	//}
+	//
+	//return false, ""
+}
